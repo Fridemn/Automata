@@ -1,0 +1,5 @@
+docs/
+*.pyc
+.vscode/
+__pycache__/
+automata/data/config.json

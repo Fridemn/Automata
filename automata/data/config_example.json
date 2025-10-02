@@ -1,0 +1,14 @@
+{
+    "openai": {
+        "api_key": "sk_1145414",
+        "api_base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o-mini",
+        "temperature": 0.7,
+        "max_tokens": 1000
+    },
+    "agent": {
+        "name": "SimpleLLM",
+        "instructions": "你是一个有帮助的AI助手。请回答用户的问题。",
+        "enable_tools": true
+    }
+}
