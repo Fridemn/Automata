@@ -2,14 +2,26 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 
 from ..db import DatabaseManager
-from ..db.models import MessageHistory, MessageData
+from agents.extensions.memory import SQLAlchemySession
 
 
 class MessageHistoryManager:
     """消息历史管理器"""
 
-    def __init__(self, db_manager: DatabaseManager):
+    def __init__(self, db_manager: DatabaseManager, engine=None):
         self.db = db_manager
+        self.engine = engine
+        self.sessions = {}  # conversation_id -> SQLAlchemySession
+
+    def _get_session(self, conversation_id: str) -> SQLAlchemySession:
+        """获取或创建对话的session"""
+        if self.engine and conversation_id not in self.sessions:
+            self.sessions[conversation_id] = SQLAlchemySession(
+                f"automata_{conversation_id}",
+                engine=self.engine,
+                create_tables=True
+            )
+        return self.sessions.get(conversation_id)
 
     async def add_message(
         self,
@@ -23,38 +35,57 @@ class MessageHistoryManager:
         sender_name: Optional[str] = None,
         content_type: str = "text",
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> MessageHistory:
+    ) -> None:
         """添加消息到历史记录"""
-        message_data = MessageData(
-            conversation_id=conversation_id,
-            session_id=session_id,
-            platform_id=platform_id,
-            user_id=user_id,
-            sender_id=sender_id,
-            sender_name=sender_name,
-            role=role,
-            content=content,
-            content_type=content_type,
-            metadata=metadata,
-        )
-
-        return await self.db.add_message(message_data)
+        # 如果有engine，使用SDK的session
+        if self.engine:
+            session = self._get_session(conversation_id)
+            if session:
+                item = {"role": role, "content": content}
+                if metadata:
+                    item.update(metadata)
+                await session.add_items([item])
+                return
+        
+        # 如果没有engine，不做任何事
+        pass
 
     async def get_conversation_history(
         self,
         conversation_id: str,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[MessageHistory]:
+    ) -> List[Dict[str, Any]]:
         """获取对话的历史消息"""
-        return await self.db.get_messages(conversation_id, limit=limit, offset=offset)
+        # 如果有engine，使用SDK的session
+        if self.engine:
+            session = self._get_session(conversation_id)
+            if session:
+                items = await session.get_items(limit=limit + offset if limit else None)
+                if offset:
+                    items = items[offset:]
+                # 转换为dict
+                messages = []
+                for item in items:
+                    message = {
+                        "role": item.get("role", "unknown"),
+                        "content": item.get("content", ""),
+                        "content_type": "text",
+                        "message_metadata": item,
+                        "created_at": datetime.now(timezone.utc)
+                    }
+                    messages.append(message)
+                return messages
+        
+        # 如果没有engine，返回空列表
+        return []
 
     async def get_recent_messages(
         self,
         session_id: str,
         platform_id: Optional[str] = None,
         limit: int = 20,
-    ) -> List[MessageHistory]:
+    ) -> List[Dict[str, Any]]:
         """获取会话的最近消息"""
         # 这里需要实现跨对话的消息查询逻辑
         # 暂时返回空列表，后面可以扩展
@@ -66,7 +97,7 @@ class MessageHistoryManager:
         session_id: Optional[str] = None,
         platform_id: Optional[str] = None,
         limit: int = 50,
-    ) -> List[MessageHistory]:
+    ) -> List[Dict[str, Any]]:
         """搜索消息内容"""
         # 这里需要实现全文搜索逻辑
         # 暂时返回空列表，后面可以扩展
@@ -108,11 +139,11 @@ class MessageHistoryManager:
                 "conversation_id": conversation_id,
                 "messages": [
                     {
-                        "role": msg.role,
-                        "content": msg.content,
-                        "content_type": msg.content_type,
-                        "timestamp": msg.created_at.isoformat(),
-                        "metadata": msg.message_metadata,
+                        "role": msg["role"],
+                        "content": msg["content"],
+                        "content_type": msg["content_type"],
+                        "timestamp": msg["created_at"].isoformat(),
+                        "metadata": msg["message_metadata"],
                     }
                     for msg in messages
                 ],
@@ -121,7 +152,7 @@ class MessageHistoryManager:
         elif format == "text":
             text_output = f"Conversation: {conversation_id}\n\n"
             for msg in messages:
-                text_output += f"[{msg.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {msg.role}: {msg.content}\n"
+                text_output += f"[{msg['created_at'].strftime('%Y-%m-%d %H:%M:%S')}] {msg['role']}: {msg['content']}\n"
             return {"text": text_output}
 
         return {}

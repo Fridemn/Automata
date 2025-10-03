@@ -5,6 +5,8 @@ import asyncio
 
 try:
     from agents import Agent, Runner, OpenAIChatCompletionsModel
+    from agents.models.multi_provider import OpenAIProvider
+    from agents.run import RunConfig
     AGENTS_AVAILABLE = True
 except ImportError:
     AGENTS_AVAILABLE = False
@@ -53,19 +55,21 @@ class OpenAIAgentProvider(AbstractProvider):
         super().__init__(provider_config)
         self.provider_settings = provider_settings
         self.api_key = self.provider_config.get("key", [""])[0]
+        self.api_base_url = self.provider_config.get("api_base_url", "")
 
         if AGENTS_AVAILABLE:
-            self.model = OpenAIChatCompletionsModel(
-                model=self.provider_config.get("model", "gpt-4"),
+            self.model_provider = OpenAIProvider(
                 api_key=self.api_key,
+                base_url=self.api_base_url,
+                use_responses=False
             )
             self.agent = Agent(
                 name="AutomataAssistant",
                 instructions="You are a helpful assistant.",
-                model=self.model,
+                model=self.provider_config.get("model", "gpt-4")
             )
         else:
-            self.model = None
+            self.model_provider = None
             self.agent = None
 
     def get_current_key(self) -> str:
@@ -74,14 +78,10 @@ class OpenAIAgentProvider(AbstractProvider):
     def set_key(self, key: str):
         self.api_key = key
         if AGENTS_AVAILABLE:
-            self.model = OpenAIChatCompletionsModel(
-                model=self.provider_config.get("model", "gpt-4"),
+            self.model_provider = OpenAIProvider(
                 api_key=self.api_key,
-            )
-            self.agent = Agent(
-                name="AutomataAssistant",
-                instructions="You are a helpful assistant.",
-                model=self.model,
+                base_url=self.api_base_url,
+                use_responses=False
             )
 
     async def get_models(self) -> List[str]:
@@ -110,28 +110,23 @@ class OpenAIAgentProvider(AbstractProvider):
             )
 
         # 如果指定了不同的模型或工具，创建临时agent
-        if (model and model != self.get_model()) or tools:
-            temp_model = OpenAIChatCompletionsModel(
-                model=model or self.provider_config.get("model", "gpt-4"),
+        if (model and model != self.get_model()) or tools or system_prompt:
+            temp_model_provider = OpenAIProvider(
                 api_key=self.api_key,
+                base_url=self.api_base_url,
+                use_responses=False
             )
             temp_agent = Agent(
                 name="AutomataAssistant",
                 instructions=system_prompt or "You are a helpful assistant.",
-                model=temp_model,
+                model=model or self.provider_config.get("model", "gpt-4"),
                 tools=tools or [],
             )
+            temp_run_config = RunConfig(model_provider=temp_model_provider)
+            result = await Runner.run(temp_agent, prompt, run_config=temp_run_config)
         else:
-            temp_agent = self.agent
-            if system_prompt:
-                temp_agent = Agent(
-                    name="AutomataAssistant",
-                    instructions=system_prompt,
-                    model=self.model,
-                    tools=tools or [],
-                )
+            result = await Runner.run(self.agent, prompt, run_config=self.create_run_config())
 
-        result = await Runner.run(temp_agent, prompt)
         return LLMResponse(
             role="assistant",
             completion_text=str(result.final_output),
@@ -165,3 +160,17 @@ class OpenAIAgentProvider(AbstractProvider):
 
 # 为了兼容性，保留Provider类名
 Provider = OpenAIAgentProvider
+
+
+class OpenAIAgentProvider(AbstractProvider):
+    # ... existing code ...
+
+    def get_model_provider(self):
+        """获取配置好的 model provider，用于创建 RunConfig"""
+        return self.model_provider
+
+    def create_run_config(self):
+        """创建运行配置"""
+        if not AGENTS_AVAILABLE or not self.model_provider:
+            return None
+        return RunConfig(model_provider=self.model_provider)

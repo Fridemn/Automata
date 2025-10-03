@@ -36,31 +36,6 @@ class Conversation(SQLModel, table=True):
     )
 
 
-class MessageHistory(SQLModel, table=True):
-    """消息历史表 - 存储所有消息记录"""
-
-    __tablename__ = "message_history"
-
-    id: int | None = Field(
-        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
-    )
-    conversation_id: str = Field(nullable=False)  # 关联的对话ID
-    session_id: str = Field(nullable=False)  # 会话ID
-    platform_id: str = Field(nullable=False)  # 平台标识
-    user_id: str = Field(nullable=False)  # 用户ID
-    sender_id: Optional[str] = Field(default=None)  # 发送者ID
-    sender_name: Optional[str] = Field(default=None)  # 发送者名称
-    role: str = Field(nullable=False)  # 消息角色: "user", "assistant", "system"
-    content: str = Field(sa_type=Text, nullable=False)  # 消息内容
-    content_type: str = Field(default="text")  # 内容类型: "text", "image", "file"等
-    message_metadata: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # 元数据
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        UniqueConstraint("conversation_id", "created_at", name="uix_message_conversation_time"),
-    )
-
-
 class Session(SQLModel, table=True):
     """会话表 - 管理用户会话状态"""
 
@@ -97,19 +72,3 @@ class ConversationData:
     persona_id: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-
-
-@dataclass
-class MessageData:
-    """消息数据类"""
-    conversation_id: str
-    session_id: str
-    platform_id: str
-    user_id: str
-    sender_id: Optional[str] = None
-    sender_name: Optional[str] = None
-    role: str = "user"
-    content: str = ""
-    content_type: str = "text"
-    metadata: Optional[Dict[str, Any]] = None
-    created_at: Optional[datetime] = None

@@ -6,7 +6,7 @@ from sqlmodel import create_engine, SQLModel, Session, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import Conversation, MessageHistory, Session as SessionModel, ConversationData, MessageData
+from .models import Conversation, Session as SessionModel, ConversationData
 
 
 class DatabaseManager:
@@ -122,43 +122,6 @@ class DatabaseManager:
             result = await session.execute(statement)
             return list(result.scalars().all())
 
-    async def add_message(self, message_data: MessageData) -> MessageHistory:
-        """添加消息到历史记录"""
-        message = MessageHistory(
-            conversation_id=message_data.conversation_id,
-            session_id=message_data.session_id,
-            platform_id=message_data.platform_id,
-            user_id=message_data.user_id,
-            sender_id=message_data.sender_id,
-            sender_name=message_data.sender_name,
-            role=message_data.role,
-            content=message_data.content,
-            content_type=message_data.content_type,
-            message_metadata=message_data.metadata,
-        )
-
-        async with AsyncSession(self.engine) as session:
-            session.add(message)
-            await session.commit()
-            await session.refresh(message)
-
-        return message
-
-    async def get_messages(
-        self,
-        conversation_id: str,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> List[MessageHistory]:
-        """获取对话的消息历史"""
-        async with AsyncSession(self.engine) as session:
-            statement = select(MessageHistory).where(
-                MessageHistory.conversation_id == conversation_id
-            ).order_by(MessageHistory.created_at.asc()).limit(limit).offset(offset)
-
-            result = await session.execute(statement)
-            return list(result.scalars().all())
-
     async def get_session(self, session_id: str) -> Optional[SessionModel]:
         """获取会话"""
         async with AsyncSession(self.engine) as session:
@@ -203,12 +166,6 @@ class DatabaseManager:
             await session.refresh(session_obj)
 
             return session_obj
-
-    async def cleanup_old_messages(self, days: int = 30) -> int:
-        """清理旧消息记录"""
-        cutoff_date = datetime.now(timezone.utc)
-        # 这里可以实现清理逻辑
-        return 0
 
     async def close(self):
         """关闭数据库连接"""

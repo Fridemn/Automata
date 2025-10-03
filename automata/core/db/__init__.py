@@ -1,12 +1,10 @@
 # Database module for Automata
-from .models import Conversation, MessageHistory, Session, ConversationData, MessageData
+from .models import Conversation, Session, ConversationData
 from .database import DatabaseManager
 
 __all__ = [
     "Conversation",
-    "MessageHistory",
     "Session",
     "ConversationData",
-    "MessageData",
     "DatabaseManager",
 ]

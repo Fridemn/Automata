@@ -12,7 +12,11 @@ class ContextManager:
     def __init__(self, db_path: Optional[str] = None):
         self.db = DatabaseManager(db_path)
         self.conversation_mgr = ConversationManager(self.db)
-        self.message_mgr = MessageHistoryManager(self.db)
+        self.message_mgr = MessageHistoryManager(self.db, engine=self.db.engine)
+
+    def set_session(self, conversation_id: str, session):
+        """设置对话的session"""
+        self.message_mgr.sessions[conversation_id] = session
 
     async def initialize_session(
         self,
@@ -105,12 +109,12 @@ class ContextManager:
         context = []
         for msg in messages:
             message_dict = {
-                "role": msg.role,
-                "content": msg.content,
+                "role": msg["role"],
+                "content": msg["content"],
             }
 
             # 添加元数据（如果有）
-            if msg.metadata:
+            if msg["message_metadata"]:
                 # 可以在这里处理特殊的元数据，比如图片URL等
                 pass
 
@@ -156,7 +160,7 @@ class ContextManager:
                 "title": conv.title or f"对话 {conv.conversation_id[:8]}",
                 "created_at": conv.created_at.isoformat(),
                 "updated_at": conv.updated_at.isoformat(),
-                "message_count": len(conv.content) if conv.content else 0,
+                "message_count": 0,  # 消息计数不再维护
             }
             for conv in conversations
         ]
@@ -184,7 +188,7 @@ class ContextManager:
         # 这里可以实现更详细的统计
         return {
             "total_conversations": 0,  # 暂时不实现
-            "total_messages": 0,
+            "total_messages": 0,  # 消息统计不再维护
             "active_sessions": 0,
         }
 

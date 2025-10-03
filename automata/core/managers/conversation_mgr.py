@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 from ..db import DatabaseManager
-from ..db.models import Conversation, MessageHistory, MessageData
+from ..db.models import Conversation
 
 
 class ConversationManager:
@@ -97,43 +97,6 @@ class ConversationManager:
             user_id=user_id,
             limit=limit,
         )
-
-    async def add_message_to_conversation(
-        self,
-        conversation_id: str,
-        session_id: str,
-        platform_id: str,
-        user_id: str,
-        role: str,
-        content: str,
-        sender_id: Optional[str] = None,
-        sender_name: Optional[str] = None,
-        content_type: str = "text",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> MessageHistory:
-        """向对话添加消息"""
-        message_data = MessageData(
-            conversation_id=conversation_id,
-            session_id=session_id,
-            platform_id=platform_id,
-            user_id=user_id,
-            sender_id=sender_id,
-            sender_name=sender_name,
-            role=role,
-            content=content,
-            content_type=content_type,
-            metadata=metadata,
-        )
-
-        return await self.db.add_message(message_data)
-
-    async def get_conversation_messages(
-        self,
-        conversation_id: str,
-        limit: int = 100,
-    ) -> List[MessageHistory]:
-        """获取对话的消息历史"""
-        return await self.db.get_messages(conversation_id, limit=limit)
 
     async def update_conversation_content(
         self,

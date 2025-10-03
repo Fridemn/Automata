@@ -21,11 +21,17 @@ class AutomataDashboard:
             self.static_folder = os.path.abspath(webui_dir)
         else:
             # 默认使用dashboard/dist目录
-            # 从automata/core/web_server.py向上两级到项目根目录，然后到dashboard/dist
-            current_dir = os.path.dirname(os.path.abspath(__file__))  # automata/core
-            parent_dir = os.path.dirname(current_dir)  # automata
-            project_root = os.path.dirname(parent_dir)  # 项目根目录
+            # 从automata/core/server/web_server.py向上三级到项目根目录，然后到dashboard/dist
+            current_dir = os.path.dirname(os.path.abspath(__file__))  # automata/core/server
+            print(f"current_dir: {current_dir}")
+            parent_dir = os.path.dirname(current_dir)  # automata/core
+            print(f"parent_dir: {parent_dir}")
+            grandparent_dir = os.path.dirname(parent_dir)  # automata
+            print(f"grandparent_dir: {grandparent_dir}")
+            project_root = os.path.dirname(grandparent_dir)  # 项目根目录
+            print(f"project_root: {project_root}")
             self.static_folder = os.path.join(project_root, "dashboard", "dist")
+            print(f"static_folder: {self.static_folder}")
 
         self.app = Quart("automata-dashboard", static_folder=self.static_folder, static_url_path="/")
         self.app.config["MAX_CONTENT_LENGTH"] = 128 * 1024 * 1024  # 128MB
@@ -35,6 +41,7 @@ class AutomataDashboard:
 
         # 设置路由
         self._setup_routes()
+        print(f"Static folder set to: {self.static_folder}")
 
     def _init_llm_provider(self):
         """初始化LLM provider和上下文管理器"""
@@ -43,6 +50,7 @@ class AutomataDashboard:
             from ..config.config import get_agent_config
             from ..managers.context_mgr import ContextManager
             from agents import Agent, SQLiteSession
+            from agents.extensions.memory import SQLAlchemySession
 
             self.provider = create_simple_provider_from_config()
             self.run_config = self.provider.create_run_config()
@@ -72,14 +80,13 @@ class AutomataDashboard:
             """服务index.html"""
             index_path = os.path.join(self.static_folder, "index.html")
             if os.path.exists(index_path):
-                with open(index_path, 'r', encoding='utf-8') as f:
-                    return f.read()
+                return await self.app.send_static_file("index.html")
             return "Dashboard not found. Please build the frontend first."
 
         @self.app.route('/<path:path>')
         async def static_files(path):
             """服务其他静态文件"""
-            return self.app.send_static_file(path)
+            return await self.app.send_static_file(path)
 
         @self.app.route('/api/chat', methods=['POST'])
         async def chat():
@@ -103,11 +110,17 @@ class AutomataDashboard:
                 )
 
                 # 获取或创建Agent session
-                from agents import SQLiteSession, Agent
+                from agents import Agent
+                from agents.extensions.memory import SQLAlchemySession
                 if conversation_id not in self.agent_sessions:
-                    # 为这个对话创建一个新的SQLiteSession
-                    agent_session = SQLiteSession(f"automata_{conversation_id}")
+                    # 为这个对话创建一个新的SQLAlchemySession，使用现有的数据库引擎
+                    agent_session = SQLAlchemySession(
+                        f"automata_{conversation_id}",
+                        engine=self.context_mgr.db.engine,
+                        create_tables=True
+                    )
                     self.agent_sessions[conversation_id] = agent_session
+                    self.context_mgr.set_session(conversation_id, agent_session)
                     print(f"Created new session for conversation {conversation_id}")
 
                     # 创建Agent（每个对话可以有不同的配置）
@@ -118,6 +131,7 @@ class AutomataDashboard:
                     )
                 else:
                     agent_session = self.agent_sessions[conversation_id]
+                    self.context_mgr.set_session(conversation_id, agent_session)
                     print(f"Reusing existing session for conversation {conversation_id}")
                     
                     # 复用已有的Agent
@@ -132,14 +146,6 @@ class AutomataDashboard:
                 print(f"Session has {len(existing_items)} existing items")
                 for i, item in enumerate(existing_items[-3:]):  # 只显示最后3个
                     print(f"  Item {i}: {item.get('role', 'unknown')} - {item.get('content', '')[:50]}...")
-
-                # 添加用户消息到我们的上下文管理器（用于前端显示）
-                await self.context_mgr.add_user_message(
-                    session_id=session_id,
-                    platform_id="web",
-                    user_id=session_id,
-                    content=user_query,
-                )
 
                 # 使用OpenAI Agent SDK的session调用LLM
                 from agents import Runner
@@ -157,14 +163,6 @@ class AutomataDashboard:
                 print(f"Session now has {len(updated_items)} items after run")
                 for i, item in enumerate(updated_items[-3:]):  # 只显示最后3个
                     print(f"  Updated item {i}: {item.get('role', 'unknown')} - {item.get('content', '')[:50]}...")
-
-                # 添加助手回复到我们的上下文管理器
-                await self.context_mgr.add_assistant_message(
-                    session_id=session_id,
-                    platform_id="web",
-                    user_id=session_id,
-                    content=str(result.final_output),
-                )
 
                 return jsonify({
                     "response": str(result.final_output),

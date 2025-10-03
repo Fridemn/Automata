@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from automata.core.server.web_server import AutomataDashboard
 from automata.core.config.config import get_openai_config, get_agent_config
-from agents import Agent, Runner, RunConfig
+from agents import Agent, Runner, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
 
 
@@ -26,6 +26,7 @@ class AutomataLauncher:
         self.dashboard_server: Optional[AutomataDashboard] = None
         self.agent: Optional[Agent] = None
         self.run_config: Optional[RunConfig] = None
+        self.session: Optional[SQLiteSession] = None
 
     async def initialize(self):
         """初始化Automata"""
@@ -63,6 +64,9 @@ class AutomataLauncher:
         # 创建运行配置
         self.run_config = RunConfig(model_provider=model_provider)
 
+        # 创建session用于对话历史
+        self.session = SQLiteSession("automata_cli")
+
         print("✅ Automata initialized successfully")
         return True
 
@@ -87,7 +91,7 @@ class AutomataLauncher:
                 print("正在处理中...")
 
                 # 使用Runner运行Agent
-                result = await Runner.run(self.agent, user_query, run_config=self.run_config)
+                result = await Runner.run(self.agent, user_query, session=self.session, run_config=self.run_config)
                 print(f"\nAgent响应: {result.final_output}")
 
             except KeyboardInterrupt:
