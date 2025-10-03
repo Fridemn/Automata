@@ -3,3 +3,5 @@ docs/
 .vscode/
 __pycache__/
 automata/data/config.json
+automata/data/automata.db
+References/
