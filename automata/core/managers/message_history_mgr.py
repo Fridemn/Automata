@@ -169,3 +169,16 @@ class MessageHistoryManager:
                     print(f"Error getting message count for conversation {conversation_id}: {e}")
                     return 0
         return 0
+
+    async def delete_messages_for_conversation(self, conversation_id: str) -> bool:
+        """删除对话的所有消息"""
+        if self.engine and conversation_id in self.sessions:
+            session = self.sessions[conversation_id]
+            try:
+                await session.clear_session()
+                del self.sessions[conversation_id]
+                return True
+            except Exception as e:
+                print(f"Error deleting messages for conversation {conversation_id}: {e}")
+                return False
+        return True

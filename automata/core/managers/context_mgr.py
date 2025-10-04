@@ -171,6 +171,7 @@ class ContextManager:
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """删除对话"""
+        await self.message_mgr.delete_messages_for_conversation(conversation_id)
         return await self.conversation_mgr.delete_conversation(conversation_id)
 
     async def export_conversation(self, conversation_id: str) -> Dict[str, Any]:
