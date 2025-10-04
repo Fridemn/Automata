@@ -333,6 +333,151 @@ class AutomataDashboard:
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
+        @self.app.route('/api/tools', methods=['GET'])
+        async def get_tools():
+            """获取所有工具状态"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                tools_status = tool_mgr.get_all_tools_status()
+                return jsonify({
+                    "tools": tools_status,
+                    "status": "success"
+                })
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/<tool_name>', methods=['GET'])
+        async def get_tool_status(tool_name):
+            """获取指定工具状态"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                status = tool_mgr.get_tool_status(tool_name)
+                if status:
+                    return jsonify({
+                        "tool": status,
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": "Tool not found"}), 404
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/<tool_name>/enable', methods=['POST'])
+        async def enable_tool(tool_name):
+            """启用工具"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                if tool_mgr.enable_tool(tool_name):
+                    return jsonify({
+                        "message": f"Tool {tool_name} enabled successfully",
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": f"Failed to enable tool {tool_name}"}), 400
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/<tool_name>/disable', methods=['POST'])
+        async def disable_tool(tool_name):
+            """禁用工具"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                if tool_mgr.disable_tool(tool_name):
+                    return jsonify({
+                        "message": f"Tool {tool_name} disabled successfully",
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": f"Failed to disable tool {tool_name}"}), 400
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/builtin/<sub_tool>/enable', methods=['POST'])
+        async def enable_builtin_tool(sub_tool):
+            """启用内置子工具"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                if tool_mgr.enable_builtin_tool(sub_tool):
+                    return jsonify({
+                        "message": f"Builtin tool {sub_tool} enabled successfully",
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": f"Failed to enable builtin tool {sub_tool}"}), 400
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/builtin/<sub_tool>/disable', methods=['POST'])
+        async def disable_builtin_tool(sub_tool):
+            """禁用内置子工具"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                if tool_mgr.disable_builtin_tool(sub_tool):
+                    return jsonify({
+                        "message": f"Builtin tool {sub_tool} disabled successfully",
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": f"Failed to disable builtin tool {sub_tool}"}), 400
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/builtin', methods=['GET'])
+        async def get_builtin_tools():
+            """获取内置工具状态"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                enabled_tools = tool_mgr.get_builtin_tools_status()
+                return jsonify({
+                    "enabled_tools": enabled_tools,
+                    "status": "success"
+                })
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tools/save-and-reload', methods=['POST'])
+        async def save_and_reload_tools():
+            """保存工具状态并重新加载"""
+            from ..tool import get_tool_manager
+            try:
+                tool_mgr = get_tool_manager()
+                
+                # 获取请求中的待处理更改
+                data = await request.get_json()
+                changes = data.get('changes', []) if data else []
+                
+                # 应用所有待处理的更改
+                for change in changes:
+                    action, tool_name = change.split(':', 1)
+                    if action == 'enable':
+                        tool_mgr.enable_tool(tool_name)
+                    elif action == 'disable':
+                        tool_mgr.disable_tool(tool_name)
+                    elif action == 'enable_builtin':
+                        tool_mgr.enable_builtin_tool(tool_name)
+                    elif action == 'disable_builtin':
+                        tool_mgr.disable_builtin_tool(tool_name)
+                
+                # 保存并重载
+                await tool_mgr.save_and_reload()
+                
+                # 重置全局Agent，以便下次使用新的工具列表
+                self.global_agent = None
+                
+                return jsonify({
+                    "message": "Tools saved and reloaded successfully",
+                    "status": "success"
+                })
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
         """启动Web服务器"""
         # 初始化工具系统

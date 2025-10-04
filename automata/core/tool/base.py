@@ -15,6 +15,7 @@ class ToolConfig:
     name: str
     description: str
     enabled: bool = True
+    version: Optional[str] = None
     config: Dict[str, Any] = None
 
     def __post_init__(self):
@@ -28,6 +29,7 @@ class BaseTool(ABC):
     def __init__(self, config: ToolConfig):
         self.config = config
         self._function_tools: List[FunctionTool] = []
+        self._active = True  # 工具是否激活状态
 
     @property
     def name(self) -> str:
@@ -39,7 +41,20 @@ class BaseTool(ABC):
 
     @property
     def enabled(self) -> bool:
-        return self.config.enabled
+        return self.config.enabled and self._active
+
+    @property
+    def active(self) -> bool:
+        """获取工具激活状态"""
+        return self._active
+
+    def enable(self) -> None:
+        """启用工具"""
+        self._active = True
+
+    def disable(self) -> None:
+        """禁用工具"""
+        self._active = False
 
     @abstractmethod
     def initialize(self) -> None:
@@ -101,6 +116,78 @@ class ToolRegistry:
     def get_enabled_tools(self) -> List[BaseTool]:
         """获取启用的工具"""
         return [tool for tool in self._tools.values() if tool.enabled]
+
+    def enable_tool(self, name: str) -> bool:
+        """启用指定工具
+
+        Args:
+            name: 工具名称
+
+        Returns:
+            bool: 是否成功启用
+        """
+        tool = self._tools.get(name)
+        if tool:
+            tool.enable()
+            return True
+        return False
+
+    def disable_tool(self, name: str) -> bool:
+        """禁用指定工具
+
+        Args:
+            name: 工具名称
+
+        Returns:
+            bool: 是否成功禁用
+        """
+        tool = self._tools.get(name)
+        if tool:
+            tool.disable()
+            return True
+        return False
+
+    def get_tool_status(self, name: str) -> Optional[Dict[str, Any]]:
+        """获取工具状态信息
+
+        Args:
+            name: 工具名称
+
+        Returns:
+            包含工具状态信息的字典，None表示工具不存在
+        """
+        tool = self._tools.get(name)
+        if tool:
+            return {
+                "name": tool.name,
+                "description": tool.description,
+                "enabled": tool.enabled,
+                "active": tool.active,
+                "category": self._get_tool_category(name),
+                "version": getattr(tool.config, 'version', None)
+            }
+        return None
+
+    def get_all_tools_status(self) -> List[Dict[str, Any]]:
+        """获取所有工具的状态信息"""
+        status_list = []
+        for name, tool in self._tools.items():
+            status_list.append({
+                "name": tool.name,
+                "description": tool.description,
+                "enabled": tool.enabled,
+                "active": tool.active,
+                "category": self._get_tool_category(name),
+                "version": getattr(tool.config, 'version', None)
+            })
+        return status_list
+
+    def _get_tool_category(self, tool_name: str) -> str:
+        """获取工具的分类"""
+        for category, tools in self._categories.items():
+            if tool_name in tools:
+                return category
+        return "unknown"
 
     def get_all_function_tools(self) -> List[FunctionTool]:
         """获取所有函数工具"""

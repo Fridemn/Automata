@@ -93,6 +93,8 @@ class ExtensionLoader:
             if hasattr(module, 'create_tool'):
                 tool = module.create_tool()
                 if isinstance(tool, BaseTool):
+                    # 设置版本信息
+                    tool.config.version = extension.version
                     self.loaded_tools[extension.name] = tool
                     self.loaded_extensions[extension.name] = extension
                     print(f"✅ Loaded extension: {extension.name} ({extension.category})")
@@ -123,6 +125,35 @@ class ExtensionLoader:
                 print(f"⏭️ Extension {extension.name} is disabled")
 
         return loaded_tools
+
+    def enable_extension(self, name: str) -> bool:
+        """启用扩展"""
+        if name in self.loaded_tools:
+            self.loaded_tools[name].enable()
+            return True
+        return False
+
+    def disable_extension(self, name: str) -> bool:
+        """禁用扩展"""
+        if name in self.loaded_tools:
+            self.loaded_tools[name].disable()
+            return True
+        return False
+
+    def get_extension_status(self, name: str) -> Optional[Dict[str, Any]]:
+        """获取扩展状态"""
+        if name in self.loaded_tools:
+            tool = self.loaded_tools[name]
+            ext_info = self.loaded_extensions.get(name)
+            return {
+                "name": tool.name,
+                "description": tool.description,
+                "enabled": tool.enabled,
+                "active": tool.active,
+                "category": ext_info.category if ext_info else "unknown",
+                "version": ext_info.version if ext_info else "unknown"
+            }
+        return None
 
     def unload_extension(self, name: str) -> None:
         """卸载扩展"""

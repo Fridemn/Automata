@@ -97,6 +97,8 @@ class MCPTool(BaseTool):
 
     def get_mcp_servers(self) -> List[MCPServer]:
         """获取 MCP 服务器列表（用于 Agent 初始化）"""
+        if not self.active:
+            return []
         return self.get_servers()
 
     async def cleanup(self) -> None:

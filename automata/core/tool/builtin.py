@@ -14,46 +14,62 @@ from .base import BaseTool, ToolConfig
 class BuiltinTools(BaseTool):
     """内置工具集合"""
 
-    def __init__(self, config: ToolConfig):
+    def __init__(self, config: ToolConfig, tool_manager=None):
         super().__init__(config)
-        self._tools_enabled = config.config.get("enabled_tools", [])
+        self.tool_manager = tool_manager
 
     def initialize(self) -> None:
         """初始化内置工具"""
         # 根据配置启用相应的工具
-        if "time" in self._tools_enabled or not self._tools_enabled:
+        disabled_tools = self._get_disabled_tools()
+        if "time" not in disabled_tools:
             self._function_tools.append(get_current_time)
 
-        if "calculator" in self._tools_enabled or not self._tools_enabled:
+        if "calculator" not in disabled_tools:
             self._function_tools.append(calculate)
 
-        if "file" in self._tools_enabled or not self._tools_enabled:
+        if "file" not in disabled_tools:
             self._function_tools.append(read_file_content)
             self._function_tools.append(list_directory)
 
-        if "system" in self._tools_enabled or not self._tools_enabled:
+        if "system" not in disabled_tools:
             self._function_tools.append(get_system_info)
+
+    def _get_disabled_tools(self) -> List[str]:
+        """获取禁用的工具列表"""
+        if self.tool_manager and hasattr(self.tool_manager, '_builtin_disabled_tools'):
+            return list(self.tool_manager._builtin_disabled_tools)
+        return []
 
     def get_function_tools(self) -> List[FunctionTool]:
         """获取函数工具列表"""
         return self._function_tools
 
     def enable_tool(self, tool_name: str) -> None:
-        """启用工具"""
-        if tool_name not in self._tools_enabled:
-            self._tools_enabled.append(tool_name)
-            self._update_tools()
+        """启用特定工具"""
+        # 通知tool_manager状态已改变，它会重新初始化
+        self._update_tools()
 
     def disable_tool(self, tool_name: str) -> None:
-        """禁用工具"""
-        if tool_name in self._tools_enabled:
-            self._tools_enabled.remove(tool_name)
-            self._update_tools()
+        """禁用特定工具"""
+        # 通知tool_manager状态已改变，它会重新初始化
+        self._update_tools()
+
+    def enable(self) -> None:
+        """启用整个内置工具组"""
+        super().enable()
+        self._update_tools()
+
+    def disable(self) -> None:
+        """禁用整个内置工具组"""
+        super().disable()
+        self._update_tools()
 
     def _update_tools(self) -> None:
         """更新工具列表"""
         self._function_tools.clear()
-        self.initialize()
+        if self.active:  # 只有在激活状态下才初始化工具
+            self.initialize()
 
 
 # 内置工具函数
@@ -158,17 +174,14 @@ DEFAULT_TOOLS = [
 ]
 
 
-def create_builtin_tools(name: str = "builtin", enabled_tools: List[str] = None) -> BuiltinTools:
+def create_builtin_tools(name: str = "builtin", tool_manager=None) -> BuiltinTools:
     """创建内置工具"""
-    if enabled_tools is None:
-        enabled_tools = []  # 空列表表示启用所有工具
-
     config = ToolConfig(
         name=name,
         description="Built-in utility tools",
-        config={"enabled_tools": enabled_tools}
+        config={}
     )
 
-    tools = BuiltinTools(config)
+    tools = BuiltinTools(config, tool_manager)
     tools.initialize()
     return tools

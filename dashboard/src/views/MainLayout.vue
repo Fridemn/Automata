@@ -21,6 +21,12 @@
             >
               ⚙️ 配置
             </button>
+            <button 
+              @click="currentView = 'tools'" 
+              :class="['nav-btn', { active: currentView === 'tools' }]"
+            >
+              🔧 工具管理
+            </button>
           </nav>
         </div>
 
@@ -64,6 +70,9 @@
         <div v-else-if="currentView === 'config'" class="config-container">
           <ConfigView />
         </div>
+        <div v-else-if="currentView === 'tools'" class="tools-container">
+          <ToolManagementView />
+        </div>
       </main>
     </div>
   </div>
@@ -74,6 +83,7 @@ import { ref, onMounted } from 'vue'
 import { useConversationsStore } from '@/store/conversations'
 import { loadConversations, createConversation, switchConversation, deleteConversation } from '@/api/conversations'
 import ConfigView from '@/views/ConfigView.vue'
+import ToolManagementView from '@/views/ToolManagementView.vue'
 
 const conversationsStore = useConversationsStore()
 

@@ -78,6 +78,8 @@ class CustomFunctionTool(BaseTool):
 
     def get_function_tools(self) -> List[FunctionTool]:
         """获取函数工具列表"""
+        if not self.active:
+            return []
         return self._function_tools
 
     def cleanup(self) -> None:
