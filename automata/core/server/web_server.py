@@ -65,6 +65,12 @@ class AutomataDashboard:
             # 会话缓存：conversation_id -> SQLiteSession
             self.agent_sessions = {}
 
+            # Agent缓存：conversation_id -> Agent
+            self.agent_cache = {}
+
+            # 全局Agent实例（复用同一个Agent）
+            self.global_agent = None
+
             print("✅ LLM provider and context manager initialized successfully")
         except Exception as e:
             print(f"❌ Failed to initialize LLM provider: {e}")
@@ -73,6 +79,30 @@ class AutomataDashboard:
             self.run_config = None
             self.context_mgr = None
             self.agent_sessions = {}
+            self.agent_cache = {}
+            self.global_agent = None
+
+    def _get_or_create_agent(self, conversation_id: str):
+        """获取或创建Agent实例 - 现在使用全局Agent"""
+        if self.global_agent is None:
+            from agents import Agent
+            self.global_agent = Agent(
+                name=self.agent_config["name"],
+                instructions=self.agent_config["instructions"],
+                model=self.provider.provider_config["model"]
+            )
+            print("Created global agent instance")
+        return self.global_agent
+
+    def cleanup_old_sessions(self, max_sessions: int = 100):
+        """清理旧的session缓存，避免内存泄漏"""
+        if len(self.agent_sessions) > max_sessions:
+            # 简单的LRU清理：移除最早的session
+            sessions_to_remove = list(self.agent_sessions.keys())[:-max_sessions//2]
+            for conv_id in sessions_to_remove:
+                if conv_id in self.agent_sessions:
+                    del self.agent_sessions[conv_id]
+            print(f"Cleaned up {len(sessions_to_remove)} old sessions")
 
     def _setup_routes(self):
         @self.app.route('/')
@@ -110,7 +140,6 @@ class AutomataDashboard:
                 )
 
                 # 获取或创建Agent session
-                from agents import Agent
                 from agents.extensions.memory import SQLAlchemySession
                 if conversation_id not in self.agent_sessions:
                     # 为这个对话创建一个新的SQLAlchemySession，使用现有的数据库引擎
@@ -122,47 +151,30 @@ class AutomataDashboard:
                     self.agent_sessions[conversation_id] = agent_session
                     self.context_mgr.set_session(conversation_id, agent_session)
                     print(f"Created new session for conversation {conversation_id}")
-
-                    # 创建Agent（每个对话可以有不同的配置）
-                    agent = Agent(
-                        name=self.agent_config["name"],
-                        instructions=self.agent_config["instructions"],
-                        model=self.provider.provider_config["model"]
-                    )
                 else:
                     agent_session = self.agent_sessions[conversation_id]
                     self.context_mgr.set_session(conversation_id, agent_session)
                     print(f"Reusing existing session for conversation {conversation_id}")
-                    
-                    # 复用已有的Agent
-                    agent = Agent(
-                        name=self.agent_config["name"],
-                        instructions=self.agent_config["instructions"],
-                        model=self.provider.provider_config["model"]
-                    )
 
-                # 调试：检查session中的现有items
-                existing_items = await agent_session.get_items()
-                print(f"Session has {len(existing_items)} existing items")
-                for i, item in enumerate(existing_items[-3:]):  # 只显示最后3个
-                    print(f"  Item {i}: {item.get('role', 'unknown')} - {item.get('content', '')[:50]}...")
+                # 获取或创建Agent实例
+                agent = self._get_or_create_agent(conversation_id)
+
+                # 定期清理旧session
+                self.cleanup_old_sessions()
 
                 # 使用OpenAI Agent SDK的session调用LLM
+                import time
                 from agents import Runner
                 print(f"Calling Runner.run with session: {agent_session.session_id}")
+                start_time = time.time()
                 result = await Runner.run(
                     agent,
                     user_query,
                     session=agent_session,
                     run_config=self.run_config
                 )
-                print(f"Runner.run completed, result: {str(result.final_output)[:100]}...")
-
-                # 调试：检查session更新后的items
-                updated_items = await agent_session.get_items()
-                print(f"Session now has {len(updated_items)} items after run")
-                for i, item in enumerate(updated_items[-3:]):  # 只显示最后3个
-                    print(f"  Updated item {i}: {item.get('role', 'unknown')} - {item.get('content', '')[:50]}...")
+                end_time = time.time()
+                print(f"Runner.run completed in {end_time - start_time:.2f} seconds, result: {str(result.final_output)[:100]}...")
 
                 return jsonify({
                     "response": str(result.final_output),
