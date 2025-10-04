@@ -2,84 +2,34 @@
   <div class="config-view">
     <h2>配置管理</h2>
     <div class="config-form">
-      <div class="config-section">
-        <h3>OpenAI 配置</h3>
-        <div class="form-group">
-          <label for="api_key">API Key:</label>
+      <div v-for="(section, sectionKey) in config" :key="sectionKey" class="config-section">
+        <h3>{{ getSectionTitle(sectionKey as string) }}</h3>
+        <div v-for="(field, fieldKey) in section" :key="fieldKey" class="form-group">
+          <label :for="`${sectionKey}_${fieldKey}`">{{ field.label }}</label>
           <input
-            id="api_key"
-            v-model="config.openai.api_key"
-            type="password"
-            placeholder="输入API Key"
+            v-if="field.type === 'text' || field.type === 'password' || field.type === 'number'"
+            :id="`${sectionKey}_${fieldKey}`"
+            :type="field.type"
+            v-model="field.value"
+            :placeholder="`输入${field.label}`"
+            :min="field.min"
+            :max="field.max"
+            :step="field.step"
           />
-        </div>
-        <div class="form-group">
-          <label for="api_base_url">API Base URL:</label>
-          <input
-            id="api_base_url"
-            v-model="config.openai.api_base_url"
-            type="text"
-            placeholder="输入API Base URL"
-          />
-        </div>
-        <div class="form-group">
-          <label for="model">模型:</label>
-          <input
-            id="model"
-            v-model="config.openai.model"
-            type="text"
-            placeholder="输入模型名称"
-          />
-        </div>
-        <div class="form-group">
-          <label for="temperature">温度:</label>
-          <input
-            id="temperature"
-            v-model.number="config.openai.temperature"
-            type="number"
-            step="0.1"
-            min="0"
-            max="2"
-          />
-        </div>
-        <div class="form-group">
-          <label for="max_tokens">最大Token数:</label>
-          <input
-            id="max_tokens"
-            v-model.number="config.openai.max_tokens"
-            type="number"
-            min="1"
-          />
-        </div>
-      </div>
-
-      <div class="config-section">
-        <h3>Agent 配置</h3>
-        <div class="form-group">
-          <label for="agent_name">Agent 名称:</label>
-          <input
-            id="agent_name"
-            v-model="config.agent.name"
-            type="text"
-            placeholder="输入Agent名称"
-          />
-        </div>
-        <div class="form-group">
-          <label for="instructions">指令:</label>
           <textarea
-            id="instructions"
-            v-model="config.agent.instructions"
-            rows="4"
-            placeholder="输入Agent指令"
+            v-else-if="field.type === 'textarea'"
+            :id="`${sectionKey}_${fieldKey}`"
+            v-model="field.value"
+            :rows="field.rows || 4"
+            :placeholder="`输入${field.label}`"
           ></textarea>
-        </div>
-        <div class="form-group">
-          <label>
+          <label v-else-if="field.type === 'checkbox'">
             <input
-              v-model="config.agent.enable_tools"
+              :id="`${sectionKey}_${fieldKey}`"
+              v-model="field.value"
               type="checkbox"
             />
-            启用工具
+            {{ field.label }}
           </label>
         </div>
       </div>
@@ -97,38 +47,34 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+interface FieldConfig {
+  value: any
+  type: string
+  label: string
+  min?: number
+  max?: number
+  step?: number
+  rows?: number
+}
+
 interface Config {
-  openai: {
-    api_key: string
-    api_base_url: string
-    model: string
-    temperature: number
-    max_tokens: number
-  }
-  agent: {
-    name: string
-    instructions: string
-    enable_tools: boolean
+  [section: string]: {
+    [field: string]: FieldConfig
   }
 }
 
-const config = ref<Config>({
-  openai: {
-    api_key: '',
-    api_base_url: '',
-    model: '',
-    temperature: 0.7,
-    max_tokens: 1000
-  },
-  agent: {
-    name: '',
-    instructions: '',
-    enable_tools: true
-  }
-})
+const config = ref<Config>({})
 
 const saving = ref(false)
 const originalConfig = ref<Config | null>(null)
+
+const getSectionTitle = (sectionKey: string): string => {
+  const titles: { [key: string]: string } = {
+    openai: 'OpenAI 配置',
+    agent: 'Agent 配置'
+  }
+  return titles[sectionKey] || sectionKey
+}
 
 const loadConfig = async () => {
   try {

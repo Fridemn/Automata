@@ -64,17 +64,28 @@ class ConfigManager:
             value = config
             for k in keys:
                 value = value[k]
+            # 如果是dict且有'value'键，返回value，否则返回整个dict
+            if isinstance(value, dict) and 'value' in value:
+                return value['value']
             return value
         except (KeyError, TypeError) as e:
             raise KeyError(f"配置项 '{key}' 不存在于配置文件中") from e
 
     def get_openai_config(self) -> Dict[str, Any]:
         """获取OpenAI相关配置"""
-        return self.get('openai')
+        openai_config = self.get('openai')
+        # 如果是新格式，提取value
+        if isinstance(openai_config, dict) and isinstance(list(openai_config.values())[0], dict) and 'value' in list(openai_config.values())[0]:
+            return {k: v['value'] for k, v in openai_config.items()}
+        return openai_config
 
     def get_agent_config(self) -> Dict[str, Any]:
         """获取Agent相关配置"""
-        return self.get('agent')
+        agent_config = self.get('agent')
+        # 如果是新格式，提取value
+        if isinstance(agent_config, dict) and isinstance(list(agent_config.values())[0], dict) and 'value' in list(agent_config.values())[0]:
+            return {k: v['value'] for k, v in agent_config.items()}
+        return agent_config
 
     def reload_config(self):
         """重新加载配置文件"""
