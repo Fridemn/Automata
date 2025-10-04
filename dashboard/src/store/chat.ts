@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { fetchConversationHistory } from '@/api/conversations'
 
 export const useChatStore = defineStore('chat', () => {
-  const conversationHistory = ref<Array<{role: string, content: string, created_at: string}>>([])
+  const conversationHistory = ref<Array<{role: string, content: string, created_at: string, message_metadata?: any}>>([])
 
 const loadConversationHistory = async (conversationId: string) => {
   try {
@@ -29,7 +29,8 @@ const loadConversationHistory = async (conversationId: string) => {
         return {
           role: msg.role,
           content: content,
-          created_at: msg.created_at
+          created_at: msg.created_at,
+          message_metadata: msg.message_metadata
         }
       })
     } else {

@@ -3,7 +3,7 @@
     <!-- 历史消息 -->
     <div class="history-messages">
       <div
-        v-for="(msg, index) in conversationHistory"
+        v-for="(msg, index) in filteredConversationHistory"
         :key="index"
         :class="['message-item', msg.role]"
       >
@@ -52,6 +52,14 @@ const response = ref('')
 const isLoading = ref(false)
 const currentConversationId = computed(() => conversationsStore.currentConversationId)
 const conversationHistory = computed(() => chatStore.conversationHistory)
+
+const filteredConversationHistory = computed(() => {
+  return conversationHistory.value.filter(msg => {
+    // 过滤掉type为function_call或function_call_output的消息
+    const msgType = msg.message_metadata?.type
+    return msgType !== 'function_call' && msgType !== 'function_call_output'
+  })
+})
 
 const sendMessage = async () => {
   if (!message.value.trim()) return
