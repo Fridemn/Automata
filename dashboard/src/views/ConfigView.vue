@@ -128,112 +128,125 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use 'sass:color';
+
+$app-primary: #007bff;
+$app-success: #28a745;
+$app-secondary: #6c757d;
+$app-light: #f8f9fa;
+$app-border: #e9ecef;
+$app-text: #333;
+$app-text-muted: #666;
+$app-radius: 8px;
+$app-transition: background-color 0.2s ease;
+$app-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
 .config-view {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-}
 
-.config-view h2 {
-  color: #333;
-  margin-bottom: 30px;
-  text-align: center;
-}
+  h2 {
+    color: $app-text;
+    margin-bottom: 30px;
+    text-align: center;
+  }
 
-.config-form {
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
+  .config-form {
+    background: white;
+    border-radius: $app-radius;
+    padding: 30px;
+    box-shadow: $app-shadow;
 
-.config-section {
-  margin-bottom: 40px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
-}
+    .config-section {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
 
-.config-section:last-child {
-  border-bottom: none;
-  margin-bottom: 30px;
-}
+      &:last-child {
+        border-bottom: none;
+        margin-bottom: 30px;
+      }
 
-.config-section h3 {
-  color: #495057;
-  margin-bottom: 20px;
-  font-size: 1.2rem;
-}
+      h3 {
+        color: #495057;
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+      }
 
-.form-group {
-  margin-bottom: 20px;
-}
+      .form-group {
+        margin-bottom: 20px;
 
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #333;
-}
+        label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: 500;
+          color: $app-text;
+        }
 
-.form-group input[type="text"],
-.form-group input[type="password"],
-.form-group input[type="number"],
-.form-group textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        textarea {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          box-sizing: border-box;
+        }
 
-.form-group input[type="checkbox"] {
-  width: auto;
-  margin-right: 8px;
-}
+        input[type="checkbox"] {
+          width: auto;
+          margin-right: 8px;
+        }
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
+        textarea {
+          resize: vertical;
+          min-height: 80px;
+        }
+      }
+    }
 
-.actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-}
+    .actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
 
-.save-btn,
-.reset-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
+      .save-btn,
+      .reset-btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: $app-radius;
+        font-size: 16px;
+        cursor: pointer;
+        transition: $app-transition;
 
-.save-btn {
-  background: #28a745;
-  color: white;
-}
+        &:disabled {
+          background: #6c757d;
+          cursor: not-allowed;
+        }
+      }
 
-.save-btn:hover:not(:disabled) {
-  background: #218838;
-}
+      .save-btn {
+        background: $app-success;
+        color: white;
 
-.save-btn:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-}
+        &:hover:not(:disabled) {
+          background: color.adjust($app-success, $lightness: -10%);
+        }
+      }
 
-.reset-btn {
-  background: #6c757d;
-  color: white;
-}
+      .reset-btn {
+        background: $app-secondary;
+        color: white;
 
-.reset-btn:hover {
-  background: #5a6268;
+        &:hover {
+          background: color.adjust($app-secondary, $lightness: -10%);
+        }
+      }
+    }
+  }
 }
 </style>

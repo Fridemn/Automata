@@ -148,191 +148,245 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use 'sass:color';
+
+$app-primary: #007bff;
+$app-secondary: #6c757d;
+$app-success: #28a745;
+$app-danger: #dc3545;
+$app-warning: #ffc107;
+$app-info: #17a2b8;
+$app-light: #f8f9fa;
+$app-dark: #343a40;
+$app-border: #e9ecef;
+$app-shadow: rgba(0, 0, 0, 0.1);
+
+$app-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$app-radius: 8px;
+$app-transition: all 0.2s ease;
+
 .app {
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+  font-family: $app-font-family;
 
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 20px;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
+  .header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 10px $app-shadow;
 
-.header h1 {
-  margin: 0 0 10px 0;
-  font-size: 2.5rem;
-  font-weight: 300;
-}
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 2.5rem;
+      font-weight: 300;
+    }
 
-.header p {
-  margin: 0;
-  opacity: 0.9;
-  font-size: 1.1rem;
-}
+    p {
+      margin: 0;
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+  }
 
-.main-container {
-  display: flex;
-  min-height: calc(100vh - 120px);
-}
-
-.sidebar {
-  width: 300px;
-  background: #f8f9fa;
-  border-right: 1px solid #e9ecef;
-  display: flex;
-  flex-direction: column;
-}
-
-.nav-menu {
-  display: flex;
-  padding: 10px;
-  gap: 5px;
-}
-
-.nav-btn {
-  flex: 1;
-  padding: 10px 15px;
-  border: none;
-  background: #e9ecef;
-  color: #495057;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.nav-btn:hover {
-  background: #dee2e6;
-}
-
-.nav-btn.active {
-  background: #007bff;
-  color: white;
-}
-
-.sidebar-subheader {
-  padding: 20px;
-  border-bottom: 1px solid #e9ecef;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sidebar-subheader h3 {
-  margin: 0;
-  color: #495057;
-}
-
-.new-chat-btn {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-}
-
-.new-chat-btn:hover {
-  background: #0056b3;
-}
-
-.conversations-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.conversations-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
-
-.conversation-item {
-  padding: 12px;
-  margin-bottom: 8px;
-  background: white;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.conversation-item:hover {
-  background: #e9ecef;
-}
-
-.conversation-item.active {
-  border-color: #007bff;
-  background: #e7f3ff;
-}
-
-.conversation-title {
-  font-weight: 500;
-  color: #212529;
-  margin-bottom: 4px;
-  word-break: break-word;
-}
-
-.conversation-meta {
-  font-size: 0.8rem;
-  color: #6c757d;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.delete-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.delete-btn:hover {
-  background: #c82333;
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-}
-
-.chat-container,
-.config-container {
-  width: 100%;
-  max-width: 1200px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
   .main-container {
-    flex-direction: column;
-  }
+    display: flex;
+    min-height: calc(100vh - 120px);
 
-  .sidebar {
-    width: 100%;
-    height: 200px;
-  }
+    .sidebar {
+      width: 300px;
+      background: $app-light;
+      border-right: 1px solid $app-border;
+      display: flex;
+      flex-direction: column;
 
-  .header h1 {
-    font-size: 2rem;
+      .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid $app-border;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        h3 {
+          margin: 0;
+          color: #495057;
+        }
+
+        .new-chat-btn {
+          background: linear-gradient(135deg, $app-primary 0%, color.adjust($app-primary, $lightness: -10%) 100%);
+          color: white;
+          border: none;
+          padding: 10px 18px;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba($app-primary, 0.3);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          &::before {
+            content: '+';
+            font-size: 1.1rem;
+            font-weight: bold;
+          }
+
+          &:hover {
+            background: linear-gradient(135deg, color.adjust($app-primary, $lightness: -10%) 0%, color.adjust($app-primary, $lightness: -20%) 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba($app-primary, 0.4);
+          }
+
+          &:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba($app-primary, 0.3);
+          }
+        }
+      }
+
+      .nav-menu {
+        display: flex;
+        padding: 10px;
+        gap: 5px;
+
+        .nav-btn {
+          flex: 1;
+          padding: 10px 15px;
+          border: none;
+          background: #e9ecef;
+          color: #495057;
+          border-radius: $app-radius;
+          cursor: pointer;
+          font-size: 0.9rem;
+          transition: $app-transition;
+
+          &:hover {
+            background: #dee2e6;
+          }
+
+          &.active {
+            background: $app-primary;
+            color: white;
+          }
+        }
+      }
+
+      .conversations-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+
+        .sidebar-subheader {
+          padding: 20px;
+          border-bottom: 1px solid $app-border;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(135deg, rgba($app-light, 0.8) 0%, rgba($app-light, 0.4) 100%);
+
+          h3 {
+            margin: 0;
+            color: #495057;
+            font-size: 1rem;
+            font-weight: 600;
+          }
+        }
+
+        .conversations-list {
+          flex: 1;
+          overflow-y: auto;
+          padding: 10px;
+
+          .conversation-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: $app-radius;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: $app-transition;
+
+            &:hover {
+              background: #e9ecef;
+            }
+
+            &.active {
+              border-color: $app-primary;
+              background: #e7f3ff;
+            }
+
+            .conversation-title {
+              font-weight: 500;
+              color: #212529;
+              margin-bottom: 4px;
+              word-break: break-word;
+            }
+
+            .conversation-meta {
+              font-size: 0.8rem;
+              color: #6c757d;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+
+              .delete-btn {
+                background: $app-danger;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: $app-transition;
+
+                &:hover {
+                  background: color.adjust($app-danger, $lightness: -10%);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+
+      .chat-container,
+      .config-container,
+      .tools-container {
+        width: 100%;
+        max-width: 1200px;
+      }
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .app {
+    .main-container {
+      flex-direction: column;
+
+      .sidebar {
+        width: 100%;
+        height: 200px;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+    }
   }
 }
 </style>

@@ -2,26 +2,9 @@
   <div class="tool-management-view">
     <h2>工具管理</h2>
 
-    <!-- 工具状态概览 -->
-    <div class="tool-overview">
-      <div class="stats">
-        <div class="stat-item">
-          <span class="stat-label">总工具数:</span>
-          <span class="stat-value">{{ tools.length }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">已启用:</span>
-          <span class="stat-value enabled">{{ enabledToolsCount }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">已禁用:</span>
-          <span class="stat-value disabled">{{ disabledToolsCount }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 工具列表 -->
-    <div class="tool-list">
+    <div class="tool-container">
+      <!-- 工具列表 -->
+      <div class="tool-list">
       <div v-for="tool in tools" :key="tool.name" class="tool-item">
         <div class="tool-info">
           <h3>{{ tool.name }}</h3>
@@ -33,51 +16,41 @@
         </div>
 
         <div class="tool-controls">
-          <div class="status-indicator">
-            <span :class="['status', tool.enabled ? 'enabled' : 'disabled']">
-              {{ tool.enabled ? '✅ 已启用' : '❌ 已禁用' }}
-            </span>
-            <span :class="['status', tool.active ? 'active' : 'inactive']">
-              {{ tool.active ? '🟢 激活' : '🔴 未激活' }}
-            </span>
-          </div>
-
-          <div class="control-buttons">
-            <button
-              v-if="!tool.enabled"
-              @click="enableTool(tool.name)"
-              :disabled="loading[tool.name]"
-              class="enable-btn"
-            >
-              {{ loading[tool.name] ? '启用中...' : '启用' }}
-            </button>
-            <button
-              v-if="tool.enabled"
-              @click="disableTool(tool.name)"
-              :disabled="loading[tool.name]"
-              class="disable-btn"
-            >
-              {{ loading[tool.name] ? '禁用中...' : '禁用' }}
-            </button>
-          </div>
+          <button
+            v-if="!tool.enabled"
+            @click="enableTool(tool.name)"
+            :disabled="loading[tool.name]"
+            class="enable-btn"
+          >
+            {{ loading[tool.name] ? '启用中...' : '启用' }}
+          </button>
+          <button
+            v-if="tool.enabled"
+            @click="disableTool(tool.name)"
+            :disabled="loading[tool.name]"
+            class="disable-btn"
+          >
+            {{ loading[tool.name] ? '禁用中...' : '禁用' }}
+          </button>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- 刷新按钮 -->
-    <div class="actions">
+      <!-- 刷新按钮 -->
+      <div class="actions">
       <button @click="loadTools" :disabled="loadingAll" class="refresh-btn">
         {{ loadingAll ? '加载中...' : '刷新' }}
       </button>
       <button @click="saveAndReload" :disabled="saving || pendingChanges.length === 0" class="save-btn">
         {{ saving ? '保存中...' : `保存并重载${pendingChanges.length > 0 ? ` (${pendingChanges.length})` : ''}` }}
       </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 interface ToolStatus {
   name: string
@@ -93,9 +66,6 @@ const loading = ref<Record<string, boolean>>({})
 const loadingAll = ref(false)
 const saving = ref(false)
 const pendingChanges = ref<string[]>([])
-
-const enabledToolsCount = computed(() => tools.value.filter(t => t.enabled).length)
-const disabledToolsCount = computed(() => tools.value.filter(t => !t.enabled).length)
 
 const loadTools = async () => {
   loadingAll.value = true
@@ -209,204 +179,158 @@ const saveAndReload = async () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use 'sass:color';
+
+$app-primary: #007bff;
+$app-success: #28a745;
+$app-danger: #dc3545;
+$app-warning: #ffc107;
+$app-secondary: #6c757d;
+$app-light: #f8f9fa;
+$app-border: #e9ecef;
+$app-text: #333;
+$app-text-muted: #666;
+$app-radius: 8px;
+$app-transition: background-color 0.2s ease;
+$app-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
 .tool-management-view {
-  max-width: 1200px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+
+  h2 {
+    color: $app-text;
+    margin-bottom: 30px;
+    text-align: center;
+  }
+
+  .tool-container {
+    background: white;
+    border-radius: $app-radius;
+    padding: 30px;
+    box-shadow: $app-shadow;
+    margin-bottom: 30px;
+
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 40px;
+
+    .tool-item {
+      background: white;
+      border: 1px solid $app-border;
+      border-radius: $app-radius;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: box-shadow 0.2s;
+
+      &:hover {
+        box-shadow: $app-shadow;
+      }
+
+      .tool-info {
+        h3 {
+          margin: 0 0 5px 0;
+          color: $app-text;
+        }
+
+        p {
+          margin: 0 0 10px 0;
+          color: $app-text-muted;
+        }
+
+        .tool-meta {
+          display: flex;
+          gap: 10px;
+
+          .category {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #495057;
+          }
+
+          .version {
+            background: #d1ecf1;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #0c5460;
+          }
+        }
+      }
+
+      .tool-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .enable-btn {
+          background: $app-success;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: color.adjust($app-success, $lightness: -10%);
+          }
+        }
+
+        .disable-btn {
+          background: $app-danger;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: color.adjust($app-danger, $lightness: -10%);
+          }
+        }
+      }
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+
+    .refresh-btn {
+      background: $app-primary;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: color.adjust($app-primary, $lightness: -10%);
+      }
+    }
+
+    .save-btn {
+      background: $app-warning;
+      color: #212529;
+      font-weight: bold;
+
+      &:hover:not(:disabled) {
+        background: color.adjust($app-warning, $lightness: -10%);
+      }
+    }
+  }
 }
 
-.tool-overview {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-}
+  button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: $app-radius;
+    cursor: pointer;
+    font-size: 16px;
+    transition: $app-transition;
 
-.stats {
-  display: flex;
-  gap: 30px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 5px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.stat-value.enabled {
-  color: #28a745;
-}
-
-.stat-value.disabled {
-  color: #dc3545;
-}
-
-.tool-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 40px;
-}
-
-.tool-item {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: box-shadow 0.2s;
-}
-
-.tool-item:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.tool-info h3 {
-  margin: 0 0 5px 0;
-  color: #333;
-}
-
-.tool-info p {
-  margin: 0 0 10px 0;
-  color: #666;
-}
-
-.tool-meta {
-  display: flex;
-  gap: 10px;
-}
-
-.category {
-  background: #e9ecef;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #495057;
-}
-
-.version {
-  background: #d1ecf1;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #0c5460;
-}
-
-.tool-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-.status-indicator {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  align-items: flex-end;
-}
-
-.status {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.status.enabled {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status.disabled {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.status.active {
-  background: #d1ecf1;
-  color: #0c5460;
-}
-
-.status.inactive {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.control-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.enable-btn {
-  background: #28a745;
-  color: white;
-}
-
-.enable-btn:hover:not(:disabled) {
-  background: #218838;
-}
-
-.disable-btn {
-  background: #dc3545;
-  color: white;
-}
-
-.disable-btn:hover:not(:disabled) {
-  background: #c82333;
-}
-
-.refresh-btn {
-  background: #007bff;
-  color: white;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.actions {
-  text-align: center;
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 30px;
-}
-
-.save-btn {
-  background: #ffc107;
-  color: #212529;
-  font-weight: bold;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #e0a800;
+    &:disabled {
+      background: $app-secondary;
+      cursor: not-allowed;
+    }
+  }
 }
 </style>
