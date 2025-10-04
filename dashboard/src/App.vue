@@ -7,6 +7,7 @@ const isLoading = ref(false)
 const conversations = ref<Array<{conversation_id: string, title: string, created_at: string, message_count: number}>>([])
 const currentSessionId = ref('default_session')
 const currentConversationId = ref('')
+const conversationHistory = ref<Array<{role: string, content: string, created_at: string}>>([])
 
 const sendMessage = async () => {
   if (!message.value.trim()) return
@@ -32,6 +33,7 @@ const sendMessage = async () => {
       response.value = data.response
       currentConversationId.value = data.conversation_id
       await loadConversations() // 重新加载对话列表
+      await loadConversationHistory(data.conversation_id) // 重新加载对话历史
     } else {
       response.value = `Error: ${data.error}`
     }
@@ -95,6 +97,7 @@ const switchConversation = async (conversationId: string) => {
     if (res.ok) {
       currentConversationId.value = conversationId
       response.value = '' // 清空当前回复
+      await loadConversationHistory(conversationId) // 加载历史消息
     }
   } catch (error) {
     console.error('Failed to switch conversation:', error)
@@ -114,6 +117,7 @@ const deleteConversation = async (conversationId: string) => {
       if (currentConversationId.value === conversationId) {
         currentConversationId.value = ''
         response.value = ''
+        conversationHistory.value = [] // 清空历史消息
       }
     }
   } catch (error) {
@@ -125,6 +129,26 @@ const handleKeyPress = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     sendMessage()
+  }
+}
+
+const loadConversationHistory = async (conversationId: string) => {
+  try {
+    const res = await fetch(`/api/conversations/${conversationId}/history`)
+    const data = await res.json()
+
+    if (res.ok) {
+      conversationHistory.value = data.messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        created_at: msg.created_at
+      }))
+    } else {
+      conversationHistory.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load conversation history:', error)
+    conversationHistory.value = []
   }
 }
 
@@ -174,6 +198,23 @@ onMounted(() => {
       <!-- 主内容区 -->
       <main class="main">
         <div class="chat-container">
+          <!-- 历史消息 -->
+          <div v-if="conversationHistory.length > 0" class="history-messages">
+            <div
+              v-for="(msg, index) in conversationHistory"
+              :key="index"
+              :class="['message-item', msg.role]"
+            >
+              <div class="message-header">
+                <span class="message-role">{{ msg.role === 'user' ? '用户' : 'AI' }}</span>
+                <span class="message-time" v-if="msg.created_at">
+                  {{ new Date(msg.created_at).toLocaleString() }}
+                </span>
+              </div>
+              <div class="message-content">{{ msg.content }}</div>
+            </div>
+          </div>
+
           <div class="response-area" v-if="response">
             <div class="response-header">
               AI 回复
@@ -424,6 +465,70 @@ onMounted(() => {
 
 .send-button:active {
   transform: translateY(1px);
+}
+
+.history-messages {
+  margin-bottom: 20px;
+}
+
+.message-item {
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.message-item.user {
+  background: #e7f3ff;
+  border-color: #b3d9ff;
+  margin-left: 40px;
+}
+
+.message-item.assistant {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  margin-right: 40px;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.message-role {
+  font-weight: bold;
+  color: #495057;
+}
+
+.message-role::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.user .message-role::before {
+  background: #007bff;
+}
+
+.assistant .message-role::before {
+  background: #28a745;
+}
+
+.message-time {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.message-content {
+  color: #212529;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 /* 响应式设计 */

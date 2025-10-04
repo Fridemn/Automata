@@ -156,3 +156,16 @@ class MessageHistoryManager:
             return {"text": text_output}
 
         return {}
+
+    async def get_message_count(self, conversation_id: str) -> int:
+        """获取对话的消息数量"""
+        if self.engine:
+            session = self._get_session(conversation_id)
+            if session:
+                try:
+                    items = await session.get_items()
+                    return len(items)
+                except Exception as e:
+                    print(f"Error getting message count for conversation {conversation_id}: {e}")
+                    return 0
+        return 0

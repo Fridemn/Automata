@@ -262,6 +262,26 @@ class AutomataDashboard:
                 print(f"Error switching conversation: {e}")
                 return jsonify({"error": str(e)}), 500
 
+        @self.app.route('/api/conversations/<conversation_id>/history', methods=['GET'])
+        async def get_conversation_history(conversation_id):
+            """获取对话历史消息"""
+            if not self.context_mgr:
+                return jsonify({"error": "Context manager not initialized"}), 500
+
+            try:
+                # 获取对话历史
+                history = await self.context_mgr.get_conversation_history(conversation_id)
+
+                return jsonify({
+                    "conversation_id": conversation_id,
+                    "messages": history,
+                    "status": "success"
+                })
+
+            except Exception as e:
+                print(f"Error getting conversation history: {e}")
+                return jsonify({"error": str(e)}), 500
+
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
         """启动Web服务器"""
         print(f"🚀 Starting Automata Dashboard at http://localhost:{port}")

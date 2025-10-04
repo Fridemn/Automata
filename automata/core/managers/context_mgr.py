@@ -154,16 +154,20 @@ class ContextManager:
             limit=limit,
         )
 
-        return [
-            {
+        result = []
+        for conv in conversations:
+            # 计算消息数量
+            message_count = await self.message_mgr.get_message_count(conv.conversation_id)
+
+            result.append({
                 "conversation_id": conv.conversation_id,
                 "title": conv.title or f"对话 {conv.conversation_id[:8]}",
                 "created_at": conv.created_at.isoformat(),
                 "updated_at": conv.updated_at.isoformat(),
-                "message_count": 0,  # 消息计数不再维护
-            }
-            for conv in conversations
-        ]
+                "message_count": message_count,
+            })
+
+        return result
 
     async def delete_conversation(self, conversation_id: str) -> bool:
         """删除对话"""
@@ -195,3 +199,7 @@ class ContextManager:
     async def close(self):
         """关闭上下文管理器"""
         await self.db.close()
+
+    async def get_conversation_history(self, conversation_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """获取对话的历史消息"""
+        return await self.message_mgr.get_conversation_history(conversation_id, limit)
