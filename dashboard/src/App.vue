@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import MarkdownIt from 'markdown-it'
+
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
 
 const message = ref('')
 const response = ref('')
@@ -228,7 +235,7 @@ onMounted(() => {
                   {{ new Date(msg.created_at).toLocaleString() }}
                 </span>
               </div>
-              <div class="message-content">{{ msg.content }}</div>
+              <div class="message-content" v-html="md.render(msg.content)"></div>
             </div>
           </div>
 
@@ -239,7 +246,7 @@ onMounted(() => {
                 (对话: {{ currentConversationId.slice(0, 8) }}...)
               </span>
             </div>
-            <div class="response-content">{{ response }}</div>
+            <div class="response-content" v-html="md.render(response)"></div>
           </div>
 
           <div class="input-area">
@@ -542,10 +549,132 @@ onMounted(() => {
   font-size: 0.8rem;
 }
 
-.message-content {
+.message-content, .response-content {
   color: #212529;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+/* Markdown 样式 */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6,
+.response-content h1,
+.response-content h2,
+.response-content h3,
+.response-content h4,
+.response-content h5,
+.response-content h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.message-content h1,
+.response-content h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 0.3em;
+}
+
+.message-content h2,
+.response-content h2 {
+  font-size: 1.3em;
+}
+
+.message-content h3,
+.response-content h3 {
+  font-size: 1.1em;
+}
+
+.message-content p,
+.response-content p {
+  margin: 0.5em 0;
+}
+
+.message-content ul,
+.message-content ol,
+.response-content ul,
+.response-content ol {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+
+.message-content li,
+.response-content li {
+  margin: 0.25em 0;
+}
+
+.message-content code,
+.response-content code {
+  background: #f8f9fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre,
+.response-content pre {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.message-content pre code,
+.response-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.message-content blockquote,
+.response-content blockquote {
+  border-left: 4px solid #007bff;
+  padding-left: 1em;
+  margin: 1em 0;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.message-content a,
+.response-content a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.message-content a:hover,
+.response-content a:hover {
+  text-decoration: underline;
+}
+
+.message-content table,
+.response-content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+
+.message-content th,
+.message-content td,
+.response-content th,
+.response-content td {
+  border: 1px solid #e9ecef;
+  padding: 0.5em;
+  text-align: left;
+}
+
+.message-content th,
+.response-content th {
+  background: #f8f9fa;
+  font-weight: 600;
 }
 
 /* 响应式设计 */
