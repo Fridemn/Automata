@@ -1,0 +1,10 @@
+{
+  "name": "file_ops",
+  "version": "1.0.0",
+  "description": "File operations extension",
+  "category": "file",
+  "author": "Automata",
+  "main": "main.py",
+  "enabled": false,
+  "dependencies": []
+}

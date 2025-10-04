@@ -11,6 +11,7 @@ from .base import ToolRegistry, ToolConfig
 from .builtin import BuiltinTools, create_builtin_tools
 from .custom import CustomFunctionTool, create_custom_function_tool
 from .mcp import MCPTool, MCPManager, create_filesystem_mcp_tool
+from .extensions import get_extension_loader
 
 
 class ToolManager:
@@ -19,6 +20,7 @@ class ToolManager:
     def __init__(self):
         self.registry = ToolRegistry()
         self.mcp_manager = MCPManager()
+        self.extension_loader = get_extension_loader()
         self._initialized = False
 
     async def initialize(self, config: Dict[str, Any] = None) -> None:
@@ -67,6 +69,19 @@ class ToolManager:
 
         # 连接所有 MCP 服务器
         await self.mcp_manager.connect_all()
+
+        # 加载所有扩展
+        extensions_config = config.get("extensions", {})
+        if extensions_config.get("enabled", True):
+            extension_tools = self.extension_loader.load_all_extensions()
+            for tool in extension_tools:
+                category = "extensions"
+                # 尝试从扩展信息中获取类别
+                extension_name = tool.name
+                if extension_name in self.extension_loader.loaded_extensions:
+                    ext_info = self.extension_loader.loaded_extensions[extension_name]
+                    category = ext_info.category
+                self.registry.register(tool, category)
 
         self._initialized = True
 

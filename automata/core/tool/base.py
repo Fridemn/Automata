@@ -65,6 +65,8 @@ class ToolRegistry:
 
     def register(self, tool: BaseTool, category: str = "general") -> None:
         """注册工具"""
+        # 初始化工具
+        tool.initialize()
         self._tools[tool.name] = tool
         if category not in self._categories:
             self._categories[category] = []
