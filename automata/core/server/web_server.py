@@ -86,12 +86,24 @@ class AutomataDashboard:
         """获取或创建Agent实例 - 现在使用全局Agent"""
         if self.global_agent is None:
             from agents import Agent
+            from ..tool import get_tool_manager
+            from ..config.config import get_agent_config
+
+            agent_config = get_agent_config()
+            tool_mgr = get_tool_manager()
+
+            # 获取所有函数工具和 MCP 服务器
+            tools = tool_mgr.get_all_function_tools()
+            mcp_servers = tool_mgr.get_mcp_servers()
+
             self.global_agent = Agent(
                 name=self.agent_config["name"],
                 instructions=self.agent_config["instructions"],
-                model=self.provider.provider_config["model"]
+                model=self.provider.provider_config["model"],
+                tools=tools,
+                mcp_servers=mcp_servers
             )
-            print("Created global agent instance")
+            print("Created global agent instance with tools")
         return self.global_agent
 
     def cleanup_old_sessions(self, max_sessions: int = 100):
@@ -323,6 +335,25 @@ class AutomataDashboard:
 
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
         """启动Web服务器"""
+        # 初始化工具系统
+        from ..tool import initialize_tools
+        from ..config.config import get_agent_config
+
+        agent_config = get_agent_config()
+        tool_config = {
+            "builtin": {
+                "enabled": agent_config.get("enable_tools", True)
+            },
+            "mcp": {
+                "enabled": agent_config.get("enable_mcp", False),
+                "filesystem": {
+                    "enabled": True,
+                    "root_path": os.getcwd()
+                }
+            }
+        }
+        await initialize_tools(tool_config)
+
         print(f"🚀 Starting Automata Dashboard at http://localhost:{port}")
         print(f"📁 Serving static files from: {self.static_folder}")
 

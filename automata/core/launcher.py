@@ -14,8 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from automata.core.server.web_server import AutomataDashboard
 from automata.core.config.config import get_openai_config, get_agent_config
+from automata.core.tool import get_tool_manager, initialize_tools
 from agents import Agent, Runner, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
+from agents.mcp import MCPServerStdio
 
 
 class AutomataLauncher:
@@ -27,6 +29,7 @@ class AutomataLauncher:
         self.agent: Optional[Agent] = None
         self.run_config: Optional[RunConfig] = None
         self.session: Optional[SQLiteSession] = None
+        self.mcp_servers: list = []
 
     async def initialize(self):
         """初始化Automata"""
@@ -54,11 +57,35 @@ class AutomataLauncher:
             use_responses=False
         )
 
+        # 初始化工具系统
+        tool_config = {
+            "builtin": {
+                "enabled": agent_config.get("enable_tools", True)
+            },
+            "mcp": {
+                "enabled": agent_config.get("enable_mcp", False),
+                "filesystem": {
+                    "enabled": True,
+                    "root_path": os.getcwd()
+                }
+            }
+        }
+        await initialize_tools(tool_config)
+
+        # 获取工具管理器
+        tool_mgr = get_tool_manager()
+
+        # 获取所有函数工具和 MCP 服务器
+        tools = tool_mgr.get_all_function_tools()
+        mcp_servers = tool_mgr.get_mcp_servers()
+
         # 创建Agent
         self.agent = Agent(
             name=agent_config.get("name", "AutomataAssistant"),
             instructions=agent_config.get("instructions", "You are a helpful assistant."),
-            model=openai_config.get("model", "gpt-4")
+            model=openai_config.get("model", "gpt-4"),
+            tools=tools,
+            mcp_servers=mcp_servers
         )
 
         # 创建运行配置
@@ -69,6 +96,12 @@ class AutomataLauncher:
 
         print("✅ Automata initialized successfully")
         return True
+
+    async def cleanup(self):
+        """清理资源"""
+        # 清理工具管理器
+        tool_mgr = get_tool_manager()
+        await tool_mgr.cleanup()
 
     async def run_cli_mode(self):
         """运行命令行模式"""
@@ -81,6 +114,7 @@ class AutomataLauncher:
 
                 if user_query.lower() == 'exit':
                     print("再见！")
+                    await self.cleanup()
                     break
 
                 if not user_query:
@@ -96,6 +130,7 @@ class AutomataLauncher:
 
             except KeyboardInterrupt:
                 print("\n再见！")
+                await self.cleanup()
                 break
             except Exception as e:
                 print(f"发生错误: {e}")
@@ -142,6 +177,9 @@ class AutomataLauncher:
         else:
             print(f"❌ Unknown mode: {mode}")
             print("Available modes: cli, web, combined")
+
+        # 清理资源
+        await self.cleanup()
 
 
 async def main():
