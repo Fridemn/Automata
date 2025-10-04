@@ -1,7 +1,7 @@
 <template>
   <div class="chat-container">
     <!-- 历史消息 -->
-    <div v-if="conversationHistory.length > 0" class="history-messages">
+    <div class="history-messages">
       <div
         v-for="(msg, index) in conversationHistory"
         :key="index"
@@ -15,16 +15,6 @@
         </div>
         <div class="message-content" v-html="renderMarkdown(msg.content)"></div>
       </div>
-    </div>
-
-    <div class="response-area" v-if="response">
-      <div class="response-header">
-        AI 回复
-        <span class="conversation-id" v-if="currentConversationId">
-          (对话: {{ currentConversationId.slice(0, 8) }}...)
-        </span>
-      </div>
-      <div class="response-content" v-html="renderMarkdown(response)"></div>
     </div>
 
     <div class="input-area">
@@ -108,41 +98,16 @@ watch(currentConversationId, async (newId) => {
 .chat-container {
   width: 100%;
   max-width: 800px;
-}
-
-.response-area {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.response-header {
-  font-weight: bold;
-  color: #495057;
-  margin-bottom: 10px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.conversation-id {
-  font-size: 0.8rem;
-  color: #6c757d;
-  font-weight: normal;
-}
-
-.response-content {
-  color: #212529;
-  line-height: 1.6;
-  white-space: pre-wrap;
+  flex-direction: column;
+  height: 100vh;
 }
 
 .input-area {
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .message-input {
@@ -192,6 +157,8 @@ watch(currentConversationId, async (newId) => {
 }
 
 .history-messages {
+  flex: 1;
+  overflow-y: auto;
   margin-bottom: 20px;
 }
 
