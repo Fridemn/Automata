@@ -22,7 +22,7 @@ class AutomataDashboard:
         else:
             # 默认使用dashboard/dist目录
             # 从automata/core/server/web_server.py向上三级到项目根目录，然后到dashboard/dist
-            current_dir = os.path.dirname(os.path.abspath(__file__))  # automata/core/server
+            current_dir = os.path.dirname(os.path.abspath(__file__))  # automata/core
             print(f"current_dir: {current_dir}")
             parent_dir = os.path.dirname(current_dir)  # automata/core
             print(f"parent_dir: {parent_dir}")
@@ -280,6 +280,33 @@ class AutomataDashboard:
 
             except Exception as e:
                 print(f"Error getting conversation history: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/config', methods=['GET'])
+        async def get_config():
+            """获取配置"""
+            from ..config.config import config_manager
+            try:
+                config = config_manager.load_config()
+                return jsonify(config)
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/config', methods=['PUT'])
+        async def update_config():
+            """更新配置并热重载"""
+            from ..config.config import config_manager
+            try:
+                data = await request.get_json()
+                # 更新配置文件
+                with open(config_manager.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                # 热重载配置管理器
+                config_manager.reload_config()
+                # 重新初始化LLM provider和agent配置
+                self._init_llm_provider()
+                return jsonify({"message": "Configuration updated and reloaded successfully"})
+            except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
     async def run(self, host: str = "0.0.0.0", port: int = 8080):

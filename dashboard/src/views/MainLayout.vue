@@ -5,32 +5,52 @@
     </header>
 
     <div class="main-container">
-      <!-- 侧边栏：对话列表 -->
+      <!-- 侧边栏：导航和对话列表 -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h3>对话列表</h3>
-          <button @click="createNewConversation" class="new-chat-btn">
-            新建对话
-          </button>
+          <nav class="nav-menu">
+            <button 
+              @click="currentView = 'chat'" 
+              :class="['nav-btn', { active: currentView === 'chat' }]"
+            >
+              💬 聊天
+            </button>
+            <button 
+              @click="currentView = 'config'" 
+              :class="['nav-btn', { active: currentView === 'config' }]"
+            >
+              ⚙️ 配置
+            </button>
+          </nav>
         </div>
 
-        <div class="conversations-list">
-          <div
-            v-for="conv in conversations"
-            :key="conv.conversation_id"
-            :class="['conversation-item', { active: conv.conversation_id === currentConversationId }]"
-            @click="switchConversationHandler(conv.conversation_id)"
-          >
-            <div class="conversation-title">{{ conv.title }}</div>
-            <div class="conversation-meta">
-              {{ conv.message_count }} 条消息
-              <button
-                @click.stop="deleteConversationHandler(conv.conversation_id)"
-                class="delete-btn"
-                title="删除对话"
-              >
-                ×
-              </button>
+        <!-- 对话列表（仅在聊天视图显示） -->
+        <div v-if="currentView === 'chat'" class="conversations-section">
+          <div class="sidebar-subheader">
+            <h3>对话列表</h3>
+            <button @click="createNewConversation" class="new-chat-btn">
+              新建对话
+            </button>
+          </div>
+
+          <div class="conversations-list">
+            <div
+              v-for="conv in conversations"
+              :key="conv.conversation_id"
+              :class="['conversation-item', { active: conv.conversation_id === currentConversationId }]"
+              @click="switchConversationHandler(conv.conversation_id)"
+            >
+              <div class="conversation-title">{{ conv.title }}</div>
+              <div class="conversation-meta">
+                {{ conv.message_count }} 条消息
+                <button
+                  @click.stop="deleteConversationHandler(conv.conversation_id)"
+                  class="delete-btn"
+                  title="删除对话"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -38,7 +58,12 @@
 
       <!-- 主内容区 -->
       <main class="main">
-        <router-view />
+        <div v-if="currentView === 'chat'" class="chat-container">
+          <router-view />
+        </div>
+        <div v-else-if="currentView === 'config'" class="config-container">
+          <ConfigView />
+        </div>
       </main>
     </div>
   </div>
@@ -48,11 +73,13 @@
 import { ref, onMounted } from 'vue'
 import { useConversationsStore } from '@/store/conversations'
 import { loadConversations, createConversation, switchConversation, deleteConversation } from '@/api/conversations'
+import ConfigView from '@/views/ConfigView.vue'
 
 const conversationsStore = useConversationsStore()
 
 const conversations = ref<Array<{conversation_id: string, title: string, created_at: string, message_count: number}>>([])
 const currentConversationId = ref('')
+const currentView = ref('chat')
 
 const loadConversationsList = async () => {
   try {
@@ -150,7 +177,34 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.sidebar-header {
+.nav-menu {
+  display: flex;
+  padding: 10px;
+  gap: 5px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 10px 15px;
+  border: none;
+  background: #e9ecef;
+  color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: #dee2e6;
+}
+
+.nav-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+.sidebar-subheader {
   padding: 20px;
   border-bottom: 1px solid #e9ecef;
   display: flex;
@@ -158,7 +212,7 @@ onMounted(() => {
   align-items: center;
 }
 
-.sidebar-header h3 {
+.sidebar-subheader h3 {
   margin: 0;
   color: #495057;
 }
@@ -176,6 +230,12 @@ onMounted(() => {
 
 .new-chat-btn:hover {
   background: #0056b3;
+}
+
+.conversations-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .conversations-list {
@@ -242,6 +302,12 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: 20px;
+}
+
+.chat-container,
+.config-container {
+  width: 100%;
+  max-width: 1200px;
 }
 
 /* 响应式设计 */
