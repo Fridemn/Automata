@@ -64,38 +64,6 @@
       </div>
     </div>
 
-    <!-- 内置工具子项管理 -->
-    <div v-if="builtinTools.length > 0" class="builtin-tools-section">
-      <h3>内置工具子项</h3>
-      <div class="builtin-tools-grid">
-        <div
-          v-for="subTool in ['time', 'calculator', 'file', 'system']"
-          :key="subTool"
-          class="builtin-tool-item"
-        >
-          <div class="tool-name">{{ subTool }}</div>
-          <div class="tool-controls">
-            <button
-              v-if="!isBuiltinToolEnabled(subTool)"
-              @click="enableBuiltinTool(subTool)"
-              :disabled="builtinLoading[subTool]"
-              class="enable-btn small"
-            >
-              {{ builtinLoading[subTool] ? '...' : '启用' }}
-            </button>
-            <button
-              v-if="isBuiltinToolEnabled(subTool)"
-              @click="disableBuiltinTool(subTool)"
-              :disabled="builtinLoading[subTool]"
-              class="disable-btn small"
-            >
-              {{ builtinLoading[subTool] ? '...' : '禁用' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 刷新按钮 -->
     <div class="actions">
       <button @click="loadTools" :disabled="loadingAll" class="refresh-btn">
@@ -121,9 +89,7 @@ interface ToolStatus {
 }
 
 const tools = ref<ToolStatus[]>([])
-const builtinTools = ref<string[]>([])
 const loading = ref<Record<string, boolean>>({})
-const builtinLoading = ref<Record<string, boolean>>({})
 const loadingAll = ref(false)
 const saving = ref(false)
 const pendingChanges = ref<string[]>([])
@@ -131,26 +97,14 @@ const pendingChanges = ref<string[]>([])
 const enabledToolsCount = computed(() => tools.value.filter(t => t.enabled).length)
 const disabledToolsCount = computed(() => tools.value.filter(t => !t.enabled).length)
 
-const isBuiltinToolEnabled = (toolName: string) => {
-  return builtinTools.value.includes(toolName)
-}
-
 const loadTools = async () => {
   loadingAll.value = true
   try {
-    const [toolsResponse, builtinResponse] = await Promise.all([
-      fetch('/api/tools'),
-      fetch('/api/tools/builtin')
-    ])
+    const toolsResponse = await fetch('/api/tools')
 
     if (toolsResponse.ok) {
       const toolsData = await toolsResponse.json()
       tools.value = toolsData.tools || []
-    }
-
-    if (builtinResponse.ok) {
-      const builtinData = await builtinResponse.json()
-      builtinTools.value = builtinData.enabled_tools || []
     }
 
     // 清空待处理的更改
@@ -214,57 +168,6 @@ const disableTool = async (toolName: string) => {
     alert('禁用工具失败')
   } finally {
     loading.value[toolName] = false
-  }
-}
-
-const enableBuiltinTool = async (toolName: string) => {
-  builtinLoading.value[toolName] = true
-  try {
-    // 记录待应用的更改
-    if (!pendingChanges.value.includes(`enable_builtin:${toolName}`)) {
-      pendingChanges.value.push(`enable_builtin:${toolName}`)
-    }
-    // 从待禁用列表中移除
-    const disableIndex = pendingChanges.value.indexOf(`disable_builtin:${toolName}`)
-    if (disableIndex > -1) {
-      pendingChanges.value.splice(disableIndex, 1)
-    }
-
-    // 临时更新前端显示状态
-    if (!builtinTools.value.includes(toolName)) {
-      builtinTools.value.push(toolName)
-    }
-  } catch (error) {
-    console.error('Failed to enable builtin tool:', error)
-    alert('启用内置工具失败')
-  } finally {
-    builtinLoading.value[toolName] = false
-  }
-}
-
-const disableBuiltinTool = async (toolName: string) => {
-  builtinLoading.value[toolName] = true
-  try {
-    // 记录待应用的更改
-    if (!pendingChanges.value.includes(`disable_builtin:${toolName}`)) {
-      pendingChanges.value.push(`disable_builtin:${toolName}`)
-    }
-    // 从待启用列表中移除
-    const enableIndex = pendingChanges.value.indexOf(`enable_builtin:${toolName}`)
-    if (enableIndex > -1) {
-      pendingChanges.value.splice(enableIndex, 1)
-    }
-
-    // 临时更新前端显示状态
-    const index = builtinTools.value.indexOf(toolName)
-    if (index > -1) {
-      builtinTools.value.splice(index, 1)
-    }
-  } catch (error) {
-    console.error('Failed to disable builtin tool:', error)
-    alert('禁用内置工具失败')
-  } finally {
-    builtinLoading.value[toolName] = false
   }
 }
 
@@ -487,50 +390,6 @@ button:disabled {
 
 .refresh-btn:hover:not(:disabled) {
   background: #0056b3;
-}
-
-.builtin-tools-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-}
-
-.builtin-tools-section h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.builtin-tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.builtin-tool-item {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.tool-name {
-  font-weight: 500;
-  color: #333;
-}
-
-.tool-controls {
-  display: flex;
-  gap: 8px;
-}
-
-button.small {
-  padding: 6px 12px;
-  font-size: 12px;
 }
 
 .actions {
