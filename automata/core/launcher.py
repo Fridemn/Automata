@@ -103,38 +103,6 @@ class AutomataLauncher:
         tool_mgr = get_tool_manager()
         await tool_mgr.cleanup()
 
-    async def run_cli_mode(self):
-        """运行命令行模式"""
-        print("💬 Starting CLI mode...")
-
-        while True:
-            try:
-                # 提示用户输入查询内容
-                user_query = input("请输入您的问题 (输入 'exit' 退出): ").strip()
-
-                if user_query.lower() == 'exit':
-                    print("再见！")
-                    await self.cleanup()
-                    break
-
-                if not user_query:
-                    print("查询内容不能为空")
-                    continue
-
-                print(f"用户查询: {user_query}")
-                print("正在处理中...")
-
-                # 使用Runner运行Agent
-                result = await Runner.run(self.agent, user_query, session=self.session, run_config=self.run_config)
-                print(f"\nAgent响应: {result.final_output}")
-
-            except KeyboardInterrupt:
-                print("\n再见！")
-                await self.cleanup()
-                break
-            except Exception as e:
-                print(f"发生错误: {e}")
-
     async def run_web_mode(self):
         """运行Web模式"""
         print("🌐 Starting Web mode...")
@@ -145,38 +113,13 @@ class AutomataLauncher:
         # 启动Web服务器
         await self.dashboard_server.run()
 
-    async def run_combined_mode(self):
-        """运行组合模式（CLI + Web）"""
-        print("🚀 Starting combined mode (CLI + Web)...")
-
-        # 初始化仪表板服务器
-        self.dashboard_server = AutomataDashboard(self.webui_dir)
-
-        # 同时运行CLI和Web服务器
-        cli_task = asyncio.create_task(self.run_cli_mode())
-        web_task = asyncio.create_task(self.dashboard_server.run())
-
-        try:
-            await asyncio.gather(cli_task, web_task)
-        except Exception as e:
-            print(f"❌ Error in combined mode: {e}")
-            raise
-
-    async def start(self, mode: str = "cli"):
+    async def start(self):
         """启动Automata"""
         success = await self.initialize()
         if not success:
             return
 
-        if mode == "cli":
-            await self.run_cli_mode()
-        elif mode == "web":
-            await self.run_web_mode()
-        elif mode == "combined":
-            await self.run_combined_mode()
-        else:
-            print(f"❌ Unknown mode: {mode}")
-            print("Available modes: cli, web, combined")
+        await self.run_web_mode()
 
         # 清理资源
         await self.cleanup()
@@ -184,12 +127,6 @@ class AutomataLauncher:
 
 async def main():
     parser = argparse.ArgumentParser(description="Automata - AI Personality System")
-    parser.add_argument(
-        "--mode",
-        choices=["cli", "web", "combined"],
-        default="cli",
-        help="运行模式：cli(命令行), web(网页), combined(命令行+网页)"
-    )
     parser.add_argument(
         "--webui-dir",
         type=str,
@@ -210,7 +147,7 @@ async def main():
     launcher = AutomataLauncher(args.webui_dir)
 
     try:
-        await launcher.start(args.mode)
+        await launcher.start()
     except KeyboardInterrupt:
         print("\n👋 Shutting down Automata...")
     except Exception as e:
