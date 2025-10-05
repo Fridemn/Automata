@@ -8,7 +8,7 @@ import asyncio
 from typing import Dict, Any, List
 from agents import function_tool, FunctionTool
 from .base import BaseTool, ToolConfig
-from ..task_manager import TaskResult
+from ..tasks.task_manager import TaskResult
 
 
 class AsyncTaskTool(BaseTool):

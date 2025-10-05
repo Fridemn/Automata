@@ -15,8 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from .db.database import DatabaseManager
-from .db.models import Task, TaskData
+from ..db.database import DatabaseManager
+from ..db.models import Task, TaskData
 
 
 @dataclass
@@ -41,7 +41,8 @@ class TaskManager:
         tool_name: str,
         task_type: str,
         description: str = "",
-        parameters: Optional[Dict[str, Any]] = None
+        parameters: Optional[Dict[str, Any]] = None,
+        priority: int = 4
     ) -> str:
         """创建异步任务"""
         task_id = str(uuid.uuid4())
@@ -54,6 +55,7 @@ class TaskManager:
             status="pending",
             description=description,
             parameters=parameters or {},
+            priority=priority,
         )
 
         async with AsyncSession(self.db.engine) as session:
@@ -100,6 +102,7 @@ class TaskManager:
                     tool_name=task.tool_name,
                     task_type=task.task_type,
                     status=task.status,
+                    priority=task.priority,
                     description=task.description,
                     parameters=task.parameters,
                     result=task.result,
@@ -124,7 +127,7 @@ class TaskManager:
             if status:
                 query = query.where(Task.status == status)
 
-            query = query.order_by(Task.created_at.desc()).limit(limit)
+            query = query.order_by(Task.priority.asc(), Task.created_at.desc()).limit(limit)
             tasks = await session.execute(query)
             task_list = tasks.scalars().all()
 
@@ -135,6 +138,7 @@ class TaskManager:
                     tool_name=task.tool_name,
                     task_type=task.task_type,
                     status=task.status,
+                    priority=task.priority,
                     description=task.description,
                     parameters=task.parameters,
                     result=task.result,

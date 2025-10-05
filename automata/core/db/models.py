@@ -78,6 +78,7 @@ class Task(SQLModel, table=True):
     tool_name: str = Field(nullable=False)  # 创建任务的工具名称
     task_type: str = Field(nullable=False)  # 任务类型，如 "async_operation"
     status: str = Field(nullable=False, default="pending")  # pending, running, completed, failed
+    priority: int = Field(default=4)
     description: Optional[str] = Field(default=None, max_length=500)  # 任务描述
     parameters: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # 任务参数
     result: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # 任务结果
@@ -116,6 +117,7 @@ class TaskData:
     tool_name: str
     task_type: str
     status: str
+    priority: int = 4
     description: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
     result: Optional[Dict[str, Any]] = None

@@ -15,7 +15,7 @@ from .mcp import MCPTool, MCPManager, create_filesystem_mcp_tool
 from .extensions import get_extension_loader
 
 if TYPE_CHECKING:
-    from ..task_manager import TaskManager
+    from ..tasks.task_manager import TaskManager
 
 
 class ToolManager:

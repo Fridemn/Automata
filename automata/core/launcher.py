@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from automata.core.server.web_server import AutomataDashboard
 from automata.core.config.config import get_openai_config, get_agent_config
 from automata.core.tool import get_tool_manager, initialize_tools
-from automata.core.task_manager import TaskManager
+from automata.core.tasks.task_manager import TaskManager
 from automata.core.db.database import DatabaseManager
 from agents import Agent, Runner, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
@@ -154,8 +154,6 @@ async def main():
     if not (sys.version_info.major == 3 and sys.version_info.minor >= 10):
         print("请使用 Python3.10+ 运行本项目。")
         return
-
-    os.makedirs("data", exist_ok=True)
 
     # 创建启动器
     launcher = AutomataLauncher(args.webui_dir)

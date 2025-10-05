@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from agents import FunctionTool
 
 if TYPE_CHECKING:
-    from ..task_manager import TaskManager, TaskResult
+    from ..tasks.task_manager import TaskManager, TaskResult
 
 
 @dataclass
