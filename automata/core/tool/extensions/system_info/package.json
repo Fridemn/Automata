@@ -1,0 +1,10 @@
+{
+  "name": "system_info",
+  "version": "1.0.0",
+  "description": "System information tools",
+  "category": "system",
+  "author": "Automata",
+  "main": "main.py",
+  "enabled": true,
+  "dependencies": []
+}

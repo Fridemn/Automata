@@ -4,9 +4,12 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Callable, Union, TYPE_CHECKING
 from dataclasses import dataclass
 from agents import FunctionTool
+
+if TYPE_CHECKING:
+    from ..task_manager import TaskManager, TaskResult
 
 
 @dataclass
@@ -26,8 +29,9 @@ class ToolConfig:
 class BaseTool(ABC):
     """工具基类"""
 
-    def __init__(self, config: ToolConfig):
+    def __init__(self, config: ToolConfig, task_manager: Optional['TaskManager'] = None):
         self.config = config
+        self.task_manager = task_manager
         self._function_tools: List[FunctionTool] = []
         self._active = True  # 工具是否激活状态
 
@@ -65,6 +69,39 @@ class BaseTool(ABC):
     def get_function_tools(self) -> List[FunctionTool]:
         """获取函数工具列表"""
         return self._function_tools
+
+    async def create_async_task(
+        self,
+        session_id: str,
+        task_type: str,
+        description: str = "",
+        parameters: Optional[Dict[str, Any]] = None,
+        task_func: Optional[Callable[[], Any]] = None
+    ) -> Optional[str]:
+        """创建异步任务"""
+        if not self.task_manager:
+            return None
+
+        task_id = await self.task_manager.create_task(
+            session_id=session_id,
+            tool_name=self.name,
+            task_type=task_type,
+            description=description,
+            parameters=parameters
+        )
+
+        if task_func:
+            # 如果提供了任务函数，立即启动任务
+            async def wrapped_task():
+                try:
+                    result = await task_func()
+                    return TaskResult(success=True, result=result)
+                except Exception as e:
+                    return TaskResult(success=False, error=str(e))
+
+            await self.task_manager.start_task(task_id, wrapped_task)
+
+        return task_id
 
     def cleanup(self) -> None:
         """清理资源"""

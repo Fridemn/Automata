@@ -14,8 +14,8 @@ from .base import BaseTool, ToolConfig
 class CustomFunctionTool(BaseTool):
     """自定义函数工具"""
 
-    def __init__(self, config: ToolConfig):
-        super().__init__(config)
+    def __init__(self, config: ToolConfig, task_manager=None):
+        super().__init__(config, task_manager)
         self._functions: Dict[str, Callable] = {}
 
     def initialize(self) -> None:
@@ -89,7 +89,7 @@ class CustomFunctionTool(BaseTool):
 
 
 # 便捷函数
-def create_custom_function_tool(name: str, functions: Dict[str, Dict[str, Any]] = None) -> CustomFunctionTool:
+def create_custom_function_tool(name: str, functions: Dict[str, Dict[str, Any]] = None, task_manager=None) -> CustomFunctionTool:
     """创建自定义函数工具"""
     if functions is None:
         functions = {}
@@ -100,6 +100,6 @@ def create_custom_function_tool(name: str, functions: Dict[str, Dict[str, Any]] 
         config={"functions": functions}
     )
 
-    tool = CustomFunctionTool(config)
+    tool = CustomFunctionTool(config, task_manager)
     tool.initialize()
     return tool

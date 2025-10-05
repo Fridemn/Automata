@@ -60,6 +60,40 @@ class Session(SQLModel, table=True):
     )
 
 
+class Task(SQLModel, table=True):
+    """任务表 - 存储异步任务的状态和结果"""
+
+    __tablename__ = "tasks"
+
+    id: int | None = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    task_id: str = Field(
+        max_length=36,
+        nullable=False,
+        unique=True,
+        default_factory=lambda: str(uuid.uuid4()),
+    )
+    session_id: str = Field(nullable=False)  # 关联的会话ID
+    tool_name: str = Field(nullable=False)  # 创建任务的工具名称
+    task_type: str = Field(nullable=False)  # 任务类型，如 "async_operation"
+    status: str = Field(nullable=False, default="pending")  # pending, running, completed, failed
+    description: Optional[str] = Field(default=None, max_length=500)  # 任务描述
+    parameters: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # 任务参数
+    result: Optional[Dict[str, Any]] = Field(default=None, sa_type=JSON)  # 任务结果
+    error_message: Optional[str] = Field(default=None)  # 错误信息
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
+    )
+    completed_at: Optional[datetime] = Field(default=None)  # 完成时间
+
+    __table_args__ = (
+        UniqueConstraint("task_id", name="uix_task_id"),
+    )
+
+
 @dataclass
 class ConversationData:
     """对话数据类"""
@@ -72,3 +106,20 @@ class ConversationData:
     persona_id: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+@dataclass
+class TaskData:
+    """任务数据类"""
+    task_id: str
+    session_id: str
+    tool_name: str
+    task_type: str
+    status: str
+    description: Optional[str] = None
+    parameters: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None

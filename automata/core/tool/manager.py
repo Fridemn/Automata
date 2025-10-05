@@ -7,22 +7,25 @@
 import asyncio
 import json
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from agents import FunctionTool
 from .base import ToolRegistry, ToolConfig
-from .builtin import BuiltinTools, create_builtin_tools
-from .custom import CustomFunctionTool, create_custom_function_tool
+from .async_task_tool import create_async_task_tool
 from .mcp import MCPTool, MCPManager, create_filesystem_mcp_tool
 from .extensions import get_extension_loader
+
+if TYPE_CHECKING:
+    from ..task_manager import TaskManager
 
 
 class ToolManager:
     """工具管理器"""
 
-    def __init__(self, data_dir: str = None):
+    def __init__(self, data_dir: str = None, task_manager: Optional['TaskManager'] = None):
         self.registry = ToolRegistry()
         self.mcp_manager = MCPManager()
         self.extension_loader = get_extension_loader()
+        self.task_manager = task_manager
         self._initialized = False
 
         # 状态持久化
@@ -43,24 +46,14 @@ class ToolManager:
         if config is None:
             config = {}
 
-        # 初始化内置工具
-        builtin_config = config.get("builtin", {})
-        if builtin_config.get("enabled", True):
-            builtin_tools = create_builtin_tools(
-                name="builtin",
-                tool_manager=self
+        # 初始化异步任务工具
+        async_task_config = config.get("async_task", {})
+        if async_task_config.get("enabled", True):
+            async_task_tool = create_async_task_tool(
+                name="async_task",
+                task_manager=self.task_manager
             )
-            self.registry.register(builtin_tools, "builtin")
-
-        # 初始化自定义函数工具
-        custom_config = config.get("custom", {})
-        if custom_config.get("enabled", False):
-            custom_functions = custom_config.get("functions", {})
-            custom_tool = create_custom_function_tool(
-                name="custom",
-                functions=custom_functions
-            )
-            self.registry.register(custom_tool, "custom")
+            self.registry.register(async_task_tool, "async_task")
 
         # 初始化 MCP 工具
         mcp_config = config.get("mcp", {})
@@ -69,14 +62,15 @@ class ToolManager:
             if mcp_config.get("filesystem", {}).get("enabled", False):
                 fs_tool = create_filesystem_mcp_tool(
                     name="filesystem_mcp",
-                    root_path=mcp_config.get("filesystem", {}).get("root_path")
+                    root_path=mcp_config.get("filesystem", {}).get("root_path"),
+                    task_manager=self.task_manager
                 )
                 self.registry.register(fs_tool, "mcp")
 
             # 其他 MCP 服务器
             servers = mcp_config.get("servers", {})
             if servers:
-                mcp_tool = self.mcp_manager.create_tool("mcp_servers", servers)
+                mcp_tool = self.mcp_manager.create_tool("mcp_servers", servers, self.task_manager)
                 self.registry.register(mcp_tool, "mcp")
 
         # 连接所有 MCP 服务器
@@ -85,7 +79,7 @@ class ToolManager:
         # 加载所有扩展
         extensions_config = config.get("extensions", {})
         if extensions_config.get("enabled", True):
-            extension_tools = self.extension_loader.load_all_extensions()
+            extension_tools = self.extension_loader.load_all_extensions(task_manager=self.task_manager)
             for tool in extension_tools:
                 category = "extensions"
                 # 尝试从扩展信息中获取类别
@@ -135,27 +129,6 @@ class ToolManager:
             if hasattr(tool, 'get_mcp_servers'):
                 mcp_servers.extend(tool.get_mcp_servers())
         return mcp_servers
-
-    def add_custom_function(self, name: str, func: callable, description: str = "",
-                           parameters: Dict[str, Any] = None) -> None:
-        """添加自定义函数"""
-        custom_tool = self.get_tool("custom")
-        if custom_tool and isinstance(custom_tool, CustomFunctionTool):
-            custom_tool.register_function(name, func, description, parameters)
-        else:
-            # 创建新的自定义工具
-            custom_tool = create_custom_function_tool("custom", {name: {
-                "function": func,
-                "description": description,
-                "parameters": parameters or {}
-            }})
-            self.registry.register(custom_tool, "custom")
-
-    def remove_custom_function(self, name: str) -> None:
-        """移除自定义函数"""
-        custom_tool = self.get_tool("custom")
-        if custom_tool and isinstance(custom_tool, CustomFunctionTool):
-            custom_tool.unregister_function(name)
 
     def enable_tool(self, name: str) -> bool:
         """启用指定工具
@@ -406,8 +379,9 @@ class ToolManager:
 tool_manager = ToolManager()
 
 
-async def initialize_tools(config: Dict[str, Any] = None) -> ToolManager:
+async def initialize_tools(config: Dict[str, Any] = None, task_manager=None) -> ToolManager:
     """初始化工具系统"""
+    tool_manager.task_manager = task_manager
     await tool_manager.initialize(config)
     return tool_manager
 

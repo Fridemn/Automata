@@ -6,7 +6,7 @@ from sqlmodel import create_engine, SQLModel, Session, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import Conversation, Session as SessionModel, ConversationData
+from .models import Conversation, Session as SessionModel, ConversationData, Task
 
 
 class DatabaseManager:

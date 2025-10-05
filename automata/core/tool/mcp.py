@@ -14,8 +14,8 @@ from .base import BaseTool, ToolConfig
 class MCPTool(BaseTool):
     """MCP 工具"""
 
-    def __init__(self, config: ToolConfig):
-        super().__init__(config)
+    def __init__(self, config: ToolConfig, task_manager=None):
+        super().__init__(config, task_manager)
         self._servers: Dict[str, MCPServer] = {}
         self._server_configs: Dict[str, Dict[str, Any]] = {}
 
@@ -120,7 +120,7 @@ class MCPManager:
     def __init__(self):
         self._tools: Dict[str, MCPTool] = {}
 
-    def create_tool(self, name: str, servers: Dict[str, Dict[str, Any]] = None) -> MCPTool:
+    def create_tool(self, name: str, servers: Dict[str, Dict[str, Any]] = None, task_manager=None) -> MCPTool:
         """创建 MCP 工具"""
         if servers is None:
             servers = {}
@@ -131,7 +131,7 @@ class MCPManager:
             config={"servers": servers}
         )
 
-        tool = MCPTool(config)
+        tool = MCPTool(config, task_manager)
         self._tools[name] = tool
         return tool
 
@@ -168,7 +168,7 @@ class MCPManager:
 
 
 # 便捷函数
-def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None) -> MCPTool:
+def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None, task_manager=None) -> MCPTool:
     """创建文件系统 MCP 工具"""
     if root_path is None:
         root_path = os.getcwd()
@@ -184,4 +184,4 @@ def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None) 
     }
 
     manager = MCPManager()
-    return manager.create_tool(name, servers)
+    return manager.create_tool(name, servers, task_manager)

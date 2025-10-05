@@ -59,7 +59,7 @@ class ExtensionLoader:
 
         return extensions
 
-    def load_extension(self, extension: ExtensionInfo) -> Optional[BaseTool]:
+    def load_extension(self, extension: ExtensionInfo, task_manager=None) -> Optional[BaseTool]:
         """加载单个扩展"""
         try:
             # 检查依赖
@@ -91,7 +91,14 @@ class ExtensionLoader:
 
             # 获取工具类
             if hasattr(module, 'create_tool'):
-                tool = module.create_tool()
+                # 尝试调用create_tool，传递task_manager如果它接受参数
+                import inspect
+                create_tool_sig = inspect.signature(module.create_tool)
+                if len(create_tool_sig.parameters) > 0:
+                    tool = module.create_tool(task_manager=task_manager)
+                else:
+                    tool = module.create_tool()
+
                 if isinstance(tool, BaseTool):
                     # 设置版本信息
                     tool.config.version = extension.version
@@ -111,14 +118,14 @@ class ExtensionLoader:
 
         return None
 
-    def load_all_extensions(self) -> List[BaseTool]:
+    def load_all_extensions(self, task_manager=None) -> List[BaseTool]:
         """加载所有扩展"""
         extensions = self.discover_extensions()
         loaded_tools = []
 
         for extension in extensions:
             if extension.enabled:
-                tool = self.load_extension(extension)
+                tool = self.load_extension(extension, task_manager)
                 if tool:
                     loaded_tools.append(tool)
             else:

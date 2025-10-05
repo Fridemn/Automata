@@ -1,0 +1,10 @@
+{
+  "name": "time",
+  "version": "1.0.0",
+  "description": "Time utility tools",
+  "category": "utility",
+  "author": "Automata",
+  "main": "main.py",
+  "enabled": true,
+  "dependencies": []
+}

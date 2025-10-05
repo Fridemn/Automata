@@ -15,6 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from automata.core.server.web_server import AutomataDashboard
 from automata.core.config.config import get_openai_config, get_agent_config
 from automata.core.tool import get_tool_manager, initialize_tools
+from automata.core.task_manager import TaskManager
+from automata.core.db.database import DatabaseManager
 from agents import Agent, Runner, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
 from agents.mcp import MCPServerStdio
@@ -30,10 +32,18 @@ class AutomataLauncher:
         self.run_config: Optional[RunConfig] = None
         self.session: Optional[SQLiteSession] = None
         self.mcp_servers: list = []
+        self.db_manager: Optional[DatabaseManager] = None
+        self.task_manager: Optional[TaskManager] = None
 
     async def initialize(self):
         """初始化Automata"""
         print("🔧 Initializing Automata...")
+
+        # 初始化数据库管理器
+        self.db_manager = DatabaseManager()
+
+        # 初始化任务管理器
+        self.task_manager = TaskManager(self.db_manager)
 
         # 获取配置
         try:
@@ -73,7 +83,7 @@ class AutomataLauncher:
                 }
             }
         }
-        await initialize_tools(tool_config)
+        await initialize_tools(tool_config, self.task_manager)
 
         # 获取工具管理器
         tool_mgr = get_tool_manager()
@@ -112,6 +122,7 @@ class AutomataLauncher:
 
         # 初始化仪表板服务器
         self.dashboard_server = AutomataDashboard(self.webui_dir)
+        self.dashboard_server.set_task_manager(self.task_manager)
 
         # 启动Web服务器
         await self.dashboard_server.run()

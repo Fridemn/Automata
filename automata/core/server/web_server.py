@@ -71,6 +71,9 @@ class AutomataDashboard:
             # 全局Agent实例（复用同一个Agent）
             self.global_agent = None
 
+            # 任务管理器
+            self.task_manager = None
+
             print("✅ LLM provider and context manager initialized successfully")
         except Exception as e:
             print(f"❌ Failed to initialize LLM provider: {e}")
@@ -81,6 +84,10 @@ class AutomataDashboard:
             self.agent_sessions = {}
             self.agent_cache = {}
             self.global_agent = None
+
+    def set_task_manager(self, task_manager):
+        """设置任务管理器"""
+        self.task_manager = task_manager
 
     def _get_or_create_agent(self, conversation_id: str):
         """获取或创建Agent实例 - 现在使用全局Agent"""
@@ -476,6 +483,72 @@ class AutomataDashboard:
                     "status": "success"
                 })
             except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tasks', methods=['GET'])
+        async def get_tasks():
+            """获取任务列表"""
+            if not self.task_manager:
+                return jsonify({"error": "Task manager not initialized"}), 500
+
+            try:
+                session_id = request.args.get('session_id')
+                status = request.args.get('status')
+                limit = int(request.args.get('limit', 50))
+
+                tasks = await self.task_manager.list_tasks(
+                    session_id=session_id,
+                    status=status,
+                    limit=limit
+                )
+
+                return jsonify({
+                    "tasks": [task.__dict__ for task in tasks],
+                    "status": "success"
+                })
+
+            except Exception as e:
+                print(f"Error getting tasks: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tasks/<task_id>', methods=['GET'])
+        async def get_task_status(task_id):
+            """获取任务状态"""
+            if not self.task_manager:
+                return jsonify({"error": "Task manager not initialized"}), 500
+
+            try:
+                task = await self.task_manager.get_task_status(task_id)
+                if task:
+                    return jsonify({
+                        "task": task.__dict__,
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": "Task not found"}), 404
+
+            except Exception as e:
+                print(f"Error getting task status: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/api/tasks/<task_id>/cancel', methods=['POST'])
+        async def cancel_task(task_id):
+            """取消任务"""
+            if not self.task_manager:
+                return jsonify({"error": "Task manager not initialized"}), 500
+
+            try:
+                success = await self.task_manager.cancel_task(task_id)
+                if success:
+                    return jsonify({
+                        "message": "Task cancelled successfully",
+                        "status": "success"
+                    })
+                else:
+                    return jsonify({"error": "Task not found or cannot be cancelled"}), 404
+
+            except Exception as e:
+                print(f"Error cancelling task: {e}")
                 return jsonify({"error": str(e)}), 500
 
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
