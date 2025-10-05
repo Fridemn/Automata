@@ -87,6 +87,14 @@ class ConfigManager:
             return {k: v['value'] for k, v in agent_config.items()}
         return agent_config
 
+    def get_vector_db_config(self) -> Dict[str, Any]:
+        """获取向量数据库相关配置"""
+        vector_db_config = self.get('vector_db')
+        # 如果是新格式，提取value
+        if isinstance(vector_db_config, dict) and isinstance(list(vector_db_config.values())[0], dict) and 'value' in list(vector_db_config.values())[0]:
+            return {k: v['value'] for k, v in vector_db_config.items()}
+        return vector_db_config
+
     def reload_config(self):
         """重新加载配置文件"""
         self._config = None
@@ -107,6 +115,10 @@ def get_openai_config() -> Dict[str, Any]:
 def get_agent_config() -> Dict[str, Any]:
     """获取Agent配置的便捷函数"""
     return config_manager.get_agent_config()
+
+def get_vector_db_config() -> Dict[str, Any]:
+    """获取向量数据库配置的便捷函数"""
+    return config_manager.get_vector_db_config()
 
 def reload_config():
     """重新加载配置的便捷函数"""

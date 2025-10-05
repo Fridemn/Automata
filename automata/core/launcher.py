@@ -62,6 +62,9 @@ class AutomataLauncher:
             "builtin": {
                 "enabled": agent_config.get("enable_tools", True)
             },
+            "extensions": {
+                "enabled": True
+            },
             "mcp": {
                 "enabled": agent_config.get("enable_mcp", False),
                 "filesystem": {

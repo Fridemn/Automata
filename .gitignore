@@ -2,7 +2,5 @@ docs/
 *.pyc
 .vscode/
 __pycache__/
-automata/data/config.json
-automata/data/automata.db
-automata/data/tool_states.json
+automata/data/
 References/
