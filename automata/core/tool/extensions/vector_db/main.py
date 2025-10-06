@@ -23,9 +23,9 @@ class VectorDBTool(BaseTool):
 
         # 获取配置
         vector_config = get_vector_db_config()
-        self.embedding_model_name = vector_config.get('embedding_model', 'all-MiniLM-L6-v2')
-        self.collection_name = vector_config.get('collection_name', 'automata_vectors')
-        self.max_results = vector_config.get('max_results', 5)
+        self.embedding_model_name = vector_config.get('embedding_model')
+        self.collection_name = vector_config.get('collection_name')
+        self.max_results = vector_config.get('max_results')
 
         # 初始化ChromaDB客户端
         data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))), 'data')

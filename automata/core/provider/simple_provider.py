@@ -110,16 +110,16 @@ def create_simple_provider_from_config() -> SimpleOpenAIProvider:
     """从配置文件创建简单的 OpenAI Provider"""
     openai_config = get_openai_config()
 
-    api_key = openai_config["api_key"]
-    if not api_key or api_key == "your_api_key_here":
+    api_key = openai_config.get("api_key", "")
+    if not api_key:
         raise ValueError("请在config.json中设置openai.api_key")
 
     provider_config = {
         "id": "simple_openai_provider",
         "type": "openai_simple",
         "key": [api_key],
-        "api_base_url": openai_config.get("api_base_url", ""),
-        "model": openai_config.get("model", "gpt-4")
+        "api_base_url": openai_config.get("api_base_url"),
+        "model": openai_config.get("model")
     }
     provider_settings = {}
 

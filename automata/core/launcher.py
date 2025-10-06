@@ -54,11 +54,11 @@ class AutomataLauncher:
             return False
 
         api_key = openai_config.get("api_key")
-        if not api_key or api_key == "your_api_key_here":
+        if not api_key:
             print("⚠️  Please set openai.api_key in data/config.json")
             return False
 
-        api_base_url = openai_config.get("api_base_url", "https://api.openai.com/v1")
+        api_base_url = openai_config.get("api_base_url")
 
         # 配置模型提供者
         model_provider = OpenAIProvider(
@@ -73,12 +73,12 @@ class AutomataLauncher:
                 "enabled": agent_config.get("enable_tools", True)
             },
             "extensions": {
-                "enabled": True
+                "enabled": True  # TODO: 从配置中获取
             },
             "mcp": {
                 "enabled": agent_config.get("enable_mcp", False),
                 "filesystem": {
-                    "enabled": True,
+                    "enabled": True,  # TODO: 从配置中获取
                     "root_path": os.getcwd()
                 }
             }
@@ -94,9 +94,9 @@ class AutomataLauncher:
 
         # 创建Agent
         self.agent = Agent(
-            name=agent_config.get("name", "AutomataAssistant"),
-            instructions=agent_config.get("instructions", "You are a helpful assistant."),
-            model=openai_config.get("model", "gpt-4"),
+            name=agent_config.get("name"),
+            instructions=agent_config.get("instructions"),
+            model=openai_config.get("model"),
             tools=tools,
             mcp_servers=mcp_servers
         )

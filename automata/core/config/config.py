@@ -71,29 +71,39 @@ class ConfigManager:
         except (KeyError, TypeError) as e:
             raise KeyError(f"配置项 '{key}' 不存在于配置文件中") from e
 
+    def _extract_nested_values(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        提取嵌套配置中的value值
+        
+        如果配置是新格式（每个子项都是包含'value'键的dict），则提取所有value；
+        否则返回原始配置。
+        
+        Args:
+            config: 配置字典
+            
+        Returns:
+            处理后的配置字典
+        """
+        if isinstance(config, dict) and config:
+            # 检查是否所有值都是dict且包含'value'键
+            if all(isinstance(v, dict) and 'value' in v for v in config.values()):
+                return {k: v['value'] for k, v in config.items()}
+        return config
+
     def get_openai_config(self) -> Dict[str, Any]:
         """获取OpenAI相关配置"""
         openai_config = self.get('openai')
-        # 如果是新格式，提取value
-        if isinstance(openai_config, dict) and isinstance(list(openai_config.values())[0], dict) and 'value' in list(openai_config.values())[0]:
-            return {k: v['value'] for k, v in openai_config.items()}
-        return openai_config
+        return self._extract_nested_values(openai_config)
 
     def get_agent_config(self) -> Dict[str, Any]:
         """获取Agent相关配置"""
         agent_config = self.get('agent')
-        # 如果是新格式，提取value
-        if isinstance(agent_config, dict) and isinstance(list(agent_config.values())[0], dict) and 'value' in list(agent_config.values())[0]:
-            return {k: v['value'] for k, v in agent_config.items()}
-        return agent_config
+        return self._extract_nested_values(agent_config)
 
     def get_vector_db_config(self) -> Dict[str, Any]:
         """获取向量数据库相关配置"""
         vector_db_config = self.get('vector_db')
-        # 如果是新格式，提取value
-        if isinstance(vector_db_config, dict) and isinstance(list(vector_db_config.values())[0], dict) and 'value' in list(vector_db_config.values())[0]:
-            return {k: v['value'] for k, v in vector_db_config.items()}
-        return vector_db_config
+        return self._extract_nested_values(vector_db_config)
 
     def reload_config(self):
         """重新加载配置文件"""
