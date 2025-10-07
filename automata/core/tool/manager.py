@@ -5,15 +5,15 @@
 """
 
 import asyncio
-import json
 import os
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-from automata.core.utils.path_utils import get_project_root, get_data_dir
+from automata.core.utils.path_utils import get_data_dir
 from agents import FunctionTool
 from .base import ToolRegistry, ToolConfig
 from .async_task_tool import create_async_task_tool
-from .mcp import MCPTool, MCPManager, create_filesystem_mcp_tool
-from .extensions import get_extension_loader
+from .mcp import create_filesystem_mcp_tool
+from .state_manager import ToolStateManager
+from .extension_manager import ExtensionManager
 
 if TYPE_CHECKING:
     from ..tasks.task_manager import TaskManager
@@ -24,20 +24,10 @@ class ToolManager:
 
     def __init__(self, data_dir: str = None, task_manager: Optional['TaskManager'] = None):
         self.registry = ToolRegistry()
-        self.mcp_manager = MCPManager()
-        self.extension_loader = get_extension_loader()
+        self.state_manager = ToolStateManager()
+        self.extension_manager = ExtensionManager()
         self.task_manager = task_manager
         self._initialized = False
-
-        # 状态持久化
-        if data_dir is None:
-            data_dir = get_data_dir()
-        self.state_file = os.path.join(data_dir, 'tool_states.json')
-        self._disabled_tools: set = set()
-        self._builtin_disabled_tools: set = set()  # builtin子工具的禁用状态
-
-        # 加载之前保存的状态
-        self._load_tool_states()
 
     async def initialize(self, config: Dict[str, Any] = None) -> None:
         """初始化工具管理器"""
@@ -68,25 +58,19 @@ class ToolManager:
                 )
                 self.registry.register(fs_tool, "mcp")
 
-            # 其他 MCP 服务器
-            servers = mcp_config.get("servers", {})
-            if servers:
-                mcp_tool = self.mcp_manager.create_tool("mcp_servers", servers, self.task_manager)
-                self.registry.register(mcp_tool, "mcp")
-
-        # 连接所有 MCP 服务器
-        await self.mcp_manager.connect_all()
+        # 连接所有MCP工具的服务器
+        await self._connect_mcp_servers()
 
         # 加载所有扩展
         extensions_config = config.get("extensions", {})
         if extensions_config.get("enabled", True):
-            extension_tools = self.extension_loader.load_all_extensions(task_manager=self.task_manager)
+            extension_tools = self.extension_manager.load_all_extensions(self.task_manager)
             for tool in extension_tools:
                 category = "extensions"
                 # 尝试从扩展信息中获取类别
                 extension_name = tool.name
-                if extension_name in self.extension_loader.loaded_extensions:
-                    ext_info = self.extension_loader.loaded_extensions[extension_name]
+                if extension_name in self.extension_manager.extension_loader.loaded_extensions:
+                    ext_info = self.extension_manager.extension_loader.loaded_extensions[extension_name]
                     category = ext_info.category
                 self.registry.register(tool, category)
 
@@ -94,6 +78,13 @@ class ToolManager:
         self._apply_tool_states()
 
         self._initialized = True
+
+    async def _connect_mcp_servers(self) -> None:
+        """连接所有MCP服务器"""
+        mcp_tools = self.registry.get_tools_by_category("mcp")
+        for tool in mcp_tools:
+            if hasattr(tool, 'connect_all_servers'):
+                await tool.connect_all_servers()
 
     def register_tool(self, tool: Any, category: str = "general") -> None:
         """注册工具"""
@@ -144,21 +135,18 @@ class ToolManager:
         if name.startswith("builtin."):
             subtool_name = name.split(".", 1)[1]
             if self.enable_builtin_tool(subtool_name):
-                self._builtin_disabled_tools.discard(subtool_name)
-                self._save_tool_states()
+                self.state_manager.enable_builtin_tool(subtool_name)
                 return True
             return False
 
         # 首先尝试在注册表中启用
         if self.registry.enable_tool(name):
-            self._disabled_tools.discard(name)
-            self._save_tool_states()
+            self.state_manager.enable_tool(name)
             return True
 
         # 如果不在注册表中，尝试在扩展中启用
-        if self.extension_loader.enable_extension(name):
-            self._disabled_tools.discard(name)
-            self._save_tool_states()
+        if self.extension_manager.enable_extension(name):
+            self.state_manager.enable_tool(name)
             return True
 
         return False
@@ -176,21 +164,18 @@ class ToolManager:
         if name.startswith("builtin."):
             subtool_name = name.split(".", 1)[1]
             if self.disable_builtin_tool(subtool_name):
-                self._builtin_disabled_tools.add(subtool_name)
-                self._save_tool_states()
+                self.state_manager.disable_builtin_tool(subtool_name)
                 return True
             return False
 
         # 首先尝试在注册表中禁用
         if self.registry.disable_tool(name):
-            self._disabled_tools.add(name)
-            self._save_tool_states()
+            self.state_manager.disable_tool(name)
             return True
 
         # 如果不在注册表中，尝试在扩展中禁用
-        if self.extension_loader.disable_extension(name):
-            self._disabled_tools.add(name)
-            self._save_tool_states()
+        if self.extension_manager.disable_extension(name):
+            self.state_manager.disable_tool(name)
             return True
 
         return False
@@ -219,7 +204,7 @@ class ToolManager:
             return status
 
         # 如果不在注册表中，在扩展中查找
-        return self.extension_loader.get_extension_status(name)
+        return self.extension_manager.get_extension_status(name)
 
     def get_all_tools_status(self) -> List[Dict[str, Any]]:
         """获取所有工具的状态信息"""
@@ -238,9 +223,9 @@ class ToolManager:
 
         # 添加扩展的状态（避免重复）
         existing_names = {status['name'] for status in status_list}
-        for name in self.extension_loader.loaded_tools:
-            if name not in existing_names:
-                ext_status = self.extension_loader.get_extension_status(name)
+        for tool in self.extension_manager.get_loaded_tools():
+            if tool.name not in existing_names:
+                ext_status = self.extension_manager.get_extension_status(tool.name)
                 if ext_status:
                     status_list.append(ext_status)
 
@@ -260,7 +245,7 @@ class ToolManager:
             "system": "系统信息工具"
         }
 
-        disabled_tools = self._builtin_disabled_tools
+        disabled_tools = self.state_manager.get_disabled_builtin_tools()
 
         for subtool_name, description in builtin_subtools.items():
             # 如果disabled_tools包含该工具，则禁用；否则启用
@@ -278,6 +263,13 @@ class ToolManager:
             })
 
         return subtools_status
+
+    def get_builtin_tools_status(self) -> List[str]:
+        """获取启用的内置子工具列表"""
+        all_builtin_subtools = ["time", "calculator", "file", "system"]
+        disabled_tools = self.state_manager.get_disabled_builtin_tools()
+        enabled_tools = [tool for tool in all_builtin_subtools if tool not in disabled_tools]
+        return enabled_tools
 
     def enable_builtin_tool(self, tool_name: str) -> bool:
         """启用内置工具的特定子工具
@@ -309,67 +301,30 @@ class ToolManager:
             return True
         return False
 
-    def get_builtin_tools_status(self) -> List[str]:
-        """获取启用的内置子工具列表"""
-        all_builtin_subtools = ["time", "calculator", "file", "system"]
-        disabled_tools = self._builtin_disabled_tools
-        enabled_tools = [tool for tool in all_builtin_subtools if tool not in disabled_tools]
-        return enabled_tools
-
-    def _load_tool_states(self) -> None:
-        """加载工具状态"""
-        try:
-            if os.path.exists(self.state_file):
-                with open(self.state_file, 'r', encoding='utf-8') as f:
-                    states = json.load(f)
-                    self._disabled_tools = set(states.get('disabled_tools', []))
-                    self._builtin_disabled_tools = set(states.get('builtin_disabled_tools', []))
-        except Exception as e:
-            print(f"加载工具状态失败: {e}")
-            self._disabled_tools = set()
-            self._builtin_disabled_tools = set()
-
-    def _save_tool_states(self) -> None:
-        """保存工具状态"""
-        try:
-            os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
-            states = {
-                'disabled_tools': list(self._disabled_tools),
-                'builtin_disabled_tools': list(self._builtin_disabled_tools)
-            }
-            with open(self.state_file, 'w', encoding='utf-8') as f:
-                json.dump(states, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"保存工具状态失败: {e}")
-
     def _apply_tool_states(self) -> None:
         """应用之前保存的工具状态"""
         # 应用普通工具的禁用状态
-        for tool_name in self._disabled_tools:
+        for tool_name in self.state_manager.get_disabled_tools():
             # 尝试在注册表中禁用
             if not self.registry.disable_tool(tool_name):
                 # 如果不在注册表中，尝试在扩展中禁用
-                self.extension_loader.disable_extension(tool_name)
-        
-        # builtin子工具的状态已经通过_disabled_tools在initialize时设置
+                self.extension_manager.disable_extension(tool_name)
+
+        # 应用builtin子工具的禁用状态
+        for subtool_name in self.state_manager.get_disabled_builtin_tools():
+            self.disable_builtin_tool(subtool_name)
 
     async def cleanup(self) -> None:
         """清理所有工具"""
-        await self.mcp_manager.cleanup_all()
+        # MCP工具现在通过注册表管理，所以不需要单独的MCPManager
         self.registry.cleanup_all()
         self._initialized = False
 
     async def save_and_reload(self) -> None:
         """保存状态并重新加载工具"""
-        # 保存当前状态
-        self._save_tool_states()
-        
         # 重新初始化工具
         await self.cleanup()
         await self.initialize()
-        
-        # 重新应用保存的状态
-        self._apply_tool_states()
 
     def is_initialized(self) -> bool:
         """检查是否已初始化"""

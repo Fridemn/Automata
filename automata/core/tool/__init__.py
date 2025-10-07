@@ -5,15 +5,18 @@
 """
 
 from .base import ToolRegistry, BaseTool
-from .mcp import MCPTool, MCPManager
+from .mcp import MCPTool
 from .manager import ToolManager, get_tool_manager, initialize_tools
+from .state_manager import ToolStateManager
+from .extension_manager import ExtensionManager
 
 __all__ = [
     'ToolRegistry',
     'BaseTool',
     'MCPTool',
-    'MCPManager',
     'ToolManager',
+    'ToolStateManager',
+    'ExtensionManager',
     'get_tool_manager',
     'initialize_tools'
 ]

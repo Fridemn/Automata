@@ -183,5 +183,10 @@ def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None, 
         }
     }
 
-    manager = MCPManager()
-    return manager.create_tool(name, servers, task_manager)
+    config = ToolConfig(
+        name=name,
+        description=f"Filesystem MCP tool for {root_path}",
+        config={"servers": servers}
+    )
+
+    return MCPTool(config, task_manager)
