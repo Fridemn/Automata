@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
+import asyncio
 
 from ..db import DatabaseManager
 from agents.extensions.memory import SQLAlchemySession
@@ -13,10 +14,11 @@ class MessageHistoryManager:
         self.engine = engine
         self.sessions = {}  # conversation_id -> SQLAlchemySession
 
-    def _get_session(self, conversation_id: str) -> SQLAlchemySession:
+    async def _get_session(self, conversation_id: str) -> SQLAlchemySession:
         """获取或创建对话的session"""
         if self.engine and conversation_id not in self.sessions:
-            self.sessions[conversation_id] = SQLAlchemySession(
+            self.sessions[conversation_id] = await asyncio.to_thread(
+                SQLAlchemySession,
                 f"automata_{conversation_id}",
                 engine=self.engine,
                 create_tables=True
@@ -39,7 +41,7 @@ class MessageHistoryManager:
         """添加消息到历史记录"""
         # 如果有engine，使用SDK的session
         if self.engine:
-            session = self._get_session(conversation_id)
+            session = await self._get_session(conversation_id)
             if session:
                 item = {"role": role, "content": content}
                 if metadata:
@@ -59,7 +61,7 @@ class MessageHistoryManager:
         """获取对话的历史消息"""
         # 如果有engine，使用SDK的session
         if self.engine:
-            session = self._get_session(conversation_id)
+            session = await self._get_session(conversation_id)
             if session:
                 items = await session.get_items(limit=limit + offset if limit else None)
                 if offset:
@@ -160,7 +162,7 @@ class MessageHistoryManager:
     async def get_message_count(self, conversation_id: str) -> int:
         """获取对话的消息数量"""
         if self.engine:
-            session = self._get_session(conversation_id)
+            session = await self._get_session(conversation_id)
             if session:
                 try:
                     items = await session.get_items()

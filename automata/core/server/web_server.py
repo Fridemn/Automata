@@ -152,7 +152,8 @@ class AutomataDashboard:
                 from agents.extensions.memory import SQLAlchemySession
                 if conversation_id not in self.agent_sessions:
                     # 为这个对话创建一个新的SQLAlchemySession，使用现有的数据库引擎
-                    agent_session = SQLAlchemySession(
+                    agent_session = await asyncio.to_thread(
+                        SQLAlchemySession,
                         f"automata_{conversation_id}",
                         engine=self.context_mgr.db.engine,
                         create_tables=True
