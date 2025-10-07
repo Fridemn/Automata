@@ -8,9 +8,10 @@ import argparse
 import os
 import sys
 from typing import Optional
+from automata.core.utils.path_utils import get_project_root
 
 # 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, get_project_root())
 
 from automata.core.server.web_server import AutomataDashboard
 from automata.core.config.config import get_openai_config, get_agent_config

@@ -8,6 +8,7 @@ import os
 import chromadb
 from typing import List, Dict, Any, Annotated
 from agents import function_tool
+from automata.core.utils.path_utils import get_project_root, get_data_dir
 from sentence_transformers import SentenceTransformer
 import openai
 
@@ -28,7 +29,7 @@ class VectorDBTool(BaseTool):
         self.max_results = vector_config.get('max_results')
 
         # 初始化ChromaDB客户端
-        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))), 'data')
+        data_dir = get_data_dir()
         os.makedirs(data_dir, exist_ok=True)
         self.client = chromadb.PersistentClient(path=data_dir)
 

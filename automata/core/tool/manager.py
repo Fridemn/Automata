@@ -8,6 +8,7 @@ import asyncio
 import json
 import os
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from automata.core.utils.path_utils import get_project_root, get_data_dir
 from agents import FunctionTool
 from .base import ToolRegistry, ToolConfig
 from .async_task_tool import create_async_task_tool
@@ -30,7 +31,7 @@ class ToolManager:
 
         # 状态持久化
         if data_dir is None:
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+            data_dir = get_data_dir()
         self.state_file = os.path.join(data_dir, 'tool_states.json')
         self._disabled_tools: set = set()
         self._builtin_disabled_tools: set = set()  # builtin子工具的禁用状态

@@ -2,8 +2,12 @@ import os
 import sys
 from typing import Dict, Any
 
+def _get_project_root():
+    from automata.core.utils.path_utils import get_project_root
+    return get_project_root()
+
 # 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.insert(0, _get_project_root())
 
 try:
     from agents.models.multi_provider import OpenAIProvider

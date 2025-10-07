@@ -7,6 +7,7 @@
 import json
 import os
 from typing import Dict, Any
+from automata.core.utils.path_utils import get_project_root, get_config_file
 
 class ConfigManager:
     """配置管理器类"""
@@ -20,7 +21,7 @@ class ConfigManager:
         """
         if config_file is None:
             # 默认配置文件路径为data目录下的config.json
-            self.config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'config.json')
+            self.config_file = get_config_file()
         else:
             self.config_file = config_file
 

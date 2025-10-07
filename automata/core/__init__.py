@@ -1,6 +1,5 @@
 # Core package
 
-from . import provider
 from . import db
 from .managers.conversation_mgr import ConversationManager
 from .managers.message_history_mgr import MessageHistoryManager

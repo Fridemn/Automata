@@ -8,7 +8,7 @@ import asyncio
 import logging
 import json
 from quart import Quart, request, jsonify
-from quart.logging import default_handler
+from automata.core.utils.path_utils import get_project_root, get_static_folder
 
 # 配置日志
 logging.getLogger('quart.app').setLevel(logging.INFO)
@@ -21,17 +21,7 @@ class AutomataDashboard:
             self.static_folder = os.path.abspath(webui_dir)
         else:
             # 默认使用dashboard/dist目录
-            # 从automata/core/server/web_server.py向上三级到项目根目录，然后到dashboard/dist
-            current_dir = os.path.dirname(os.path.abspath(__file__))  # automata/core
-            print(f"current_dir: {current_dir}")
-            parent_dir = os.path.dirname(current_dir)  # automata/core
-            print(f"parent_dir: {parent_dir}")
-            grandparent_dir = os.path.dirname(parent_dir)  # automata
-            print(f"grandparent_dir: {grandparent_dir}")
-            project_root = os.path.dirname(grandparent_dir)  # 项目根目录
-            print(f"project_root: {project_root}")
-            self.static_folder = os.path.join(project_root, "dashboard", "dist")
-            print(f"static_folder: {self.static_folder}")
+            self.static_folder = get_static_folder()
 
         self.app = Quart("automata-dashboard", static_folder=self.static_folder, static_url_path="/")
         self.app.config["MAX_CONTENT_LENGTH"] = 128 * 1024 * 1024  # 128MB

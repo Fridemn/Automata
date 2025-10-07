@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlmodel import create_engine, SQLModel, Session, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from automata.core.utils.path_utils import get_project_root, get_data_dir
 
 from .models import Conversation, Session as SessionModel, ConversationData, Task
 
@@ -15,7 +16,7 @@ class DatabaseManager:
     def __init__(self, db_path: str = None):
         if db_path is None:
             # 默认数据库路径
-            data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data')
+            data_dir = get_data_dir()
             os.makedirs(data_dir, exist_ok=True)
             db_path = os.path.join(data_dir, 'automata.db')
 
