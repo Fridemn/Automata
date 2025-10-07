@@ -61,7 +61,7 @@ class VectorDBTool(BaseTool):
             # 尝试获取现有集合
             self.collection = self.client.get_collection(name=self.collection_name)
             print(f"Using existing collection: {self.collection_name}")
-        except:
+        except ValueError:
             # 集合不存在，创建新集合
             self.collection = self.client.create_collection(name=self.collection_name)
             print(f"Created new collection: {self.collection_name}")
@@ -80,7 +80,7 @@ class VectorDBTool(BaseTool):
             if results['embeddings']:
                 existing_dim = len(results['embeddings'][0])
                 return existing_dim == embedding_dim
-        except:
+        except Exception:
             pass
 
         return False
