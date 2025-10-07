@@ -18,6 +18,8 @@ from automata.core.config.config import get_openai_config, get_agent_config
 from automata.core.tool import get_tool_manager, initialize_tools
 from automata.core.tasks.task_manager import TaskManager
 from automata.core.db.database import DatabaseManager
+from automata.core.initialization_manager import InitializationManager
+from automata.core.dependency_container import DependencyContainer
 from agents import Agent, Runner, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
 from agents.mcp import MCPServerStdio
@@ -33,42 +35,129 @@ class AutomataLauncher:
         self.run_config: Optional[RunConfig] = None
         self.session: Optional[SQLiteSession] = None
         self.mcp_servers: list = []
-        self.db_manager: Optional[DatabaseManager] = None
-        self.task_manager: Optional[TaskManager] = None
+
+        # 初始化管理器和依赖容器
+        self.init_manager = InitializationManager()
+        self.container = DependencyContainer()
+
+        # 注册核心服务到容器
+        self._register_services()
+
+    def _register_services(self):
+        """注册服务到依赖注入容器"""
+        # 注册配置服务
+        self.container.register_factory("openai_config", lambda: get_openai_config())
+        self.container.register_factory("agent_config", lambda: get_agent_config())
+
+        # 注册数据库管理器
+        self.container.register(DatabaseManager)
+
+        # 注册任务管理器（依赖数据库管理器）
+        async def create_task_manager():
+            db_manager = self.container.resolve(DatabaseManager)
+            return TaskManager(db_manager)
+        self.container.register_factory("TaskManager", create_task_manager)
+
+        # 注册模型提供者（依赖配置）
+        async def create_model_provider():
+            openai_config = self.container.resolve("openai_config")
+            api_key = openai_config.get("api_key")
+            api_base_url = openai_config.get("api_base_url")
+
+            return OpenAIProvider(
+                api_key=api_key,
+                base_url=api_base_url,
+                use_responses=False
+            )
+        self.container.register_factory("OpenAIProvider", create_model_provider)
 
     async def initialize(self):
         """初始化Automata"""
         print("🔧 Initializing Automata...")
 
-        # 初始化数据库管理器
-        self.db_manager = DatabaseManager()
+        # 注册初始化器
+        self._register_initializers()
 
-        # 初始化任务管理器
-        self.task_manager = TaskManager(self.db_manager)
+        # 执行初始化
+        results = await self.init_manager.initialize_all(parallel=True)
 
-        # 获取配置
-        try:
-            openai_config = get_openai_config()
-            agent_config = get_agent_config()
-        except Exception as e:
-            print(f"❌ Failed to load configuration: {e}")
-            return False
+        # 检查结果
+        summary = self.init_manager.get_results_summary()
+        print(f"📊 Initialization Summary: {summary['success']}/{summary['total']} successful")
 
-        api_key = openai_config.get("api_key")
+        if summary['failed'] > 0:
+            print("❌ Failed initializations:")
+            for name, detail in summary['details'].items():
+                if detail['status'] == 'failed':
+                    print(f"  - {name}: {detail['error']}")
+
+        success = self.init_manager.is_successful()
+        if success:
+            print("✅ Automata initialized successfully")
+        else:
+            print("❌ Automata initialization failed")
+
+        return success
+
+    def _register_initializers(self):
+        """注册所有初始化器"""
+        # 配置加载（无依赖）
+        self.init_manager.register_initializer("config", self._init_configurations)
+
+        # 数据库初始化（无依赖）
+        self.init_manager.register_initializer("database", self._init_database)
+
+        # 任务管理器（依赖数据库）
+        self.init_manager.register_initializer("task_manager", self._init_task_manager, ["database"])
+
+        # 模型提供者（依赖配置）
+        self.init_manager.register_initializer("model_provider", self._init_model_provider, ["config"])
+
+        # 工具系统（依赖任务管理器）
+        self.init_manager.register_initializer("tools", self._init_tools, ["task_manager"])
+
+        # Agent创建（依赖配置、模型提供者、工具）
+        self.init_manager.register_initializer("agent", self._init_agent, ["config", "model_provider", "tools"])
+
+        # 会话设置（依赖Agent）
+        self.init_manager.register_initializer("session", self._init_session, ["agent"])
+
+    async def _init_configurations(self):
+        """初始化配置"""
+        self.openai_config = self.container.resolve("openai_config")
+        self.agent_config = self.container.resolve("agent_config")
+
+        api_key = self.openai_config.get("api_key")
         if not api_key:
-            print("⚠️  Please set openai.api_key in data/config.json")
-            return False
+            raise ValueError("Please set openai.api_key in data/config.json")
 
-        api_base_url = openai_config.get("api_base_url")
+        return {"openai_config": self.openai_config, "agent_config": self.agent_config}
 
-        # 配置模型提供者
-        model_provider = OpenAIProvider(
-            api_key=api_key,
-            base_url=api_base_url,
-            use_responses=False
-        )
+    async def _init_database(self):
+        """初始化数据库管理器"""
+        self.db_manager = self.container.resolve(DatabaseManager)
+        await self.db_manager.initialize()
 
-        # 初始化工具系统
+        return self.db_manager
+
+    async def _init_task_manager(self):
+        """初始化任务管理器"""
+        self.task_manager = self.container.resolve("TaskManager")
+
+        return self.task_manager
+
+    async def _init_model_provider(self):
+        """初始化模型提供者"""
+        self.model_provider = self.container.resolve("OpenAIProvider")
+
+        return self.model_provider
+
+    async def _init_tools(self):
+        """初始化工具系统"""
+        # 从容器获取配置和任务管理器
+        agent_config = self.container.resolve("agent_config")
+        task_manager = self.container.resolve("TaskManager")
+
         tool_config = {
             "builtin": {
                 "enabled": agent_config.get("enable_tools", True)
@@ -84,16 +173,22 @@ class AutomataLauncher:
                 }
             }
         }
-        await initialize_tools(tool_config, self.task_manager)
 
-        # 获取工具管理器
+        await initialize_tools(tool_config, task_manager)
+
+        return tool_config
+
+    async def _init_agent(self):
+        """创建Agent"""
+        # 从容器获取所需组件
+        agent_config = self.container.resolve("agent_config")
+        openai_config = self.container.resolve("openai_config")
+        model_provider = self.container.resolve("OpenAIProvider")
+
         tool_mgr = get_tool_manager()
-
-        # 获取所有函数工具和 MCP 服务器
         tools = tool_mgr.get_all_function_tools()
         mcp_servers = tool_mgr.get_mcp_servers()
 
-        # 创建Agent
         self.agent = Agent(
             name=agent_config.get("name"),
             instructions=agent_config.get("instructions"),
@@ -105,17 +200,22 @@ class AutomataLauncher:
         # 创建运行配置
         self.run_config = RunConfig(model_provider=model_provider)
 
-        # 创建session用于对话历史
+        return self.agent
+
+    async def _init_session(self):
+        """设置会话"""
         self.session = SQLiteSession("automata_cli")
 
-        print("✅ Automata initialized successfully")
-        return True
+        return self.session
 
     async def cleanup(self):
         """清理资源"""
-        # 清理工具管理器
-        tool_mgr = get_tool_manager()
-        await tool_mgr.cleanup()
+        try:
+            # 清理工具管理器
+            tool_mgr = get_tool_manager()
+            await tool_mgr.cleanup()
+        except Exception as e:
+            print(f"Warning: Error during cleanup: {e}")
 
     async def run_web_mode(self):
         """运行Web模式"""

@@ -24,11 +24,10 @@ class DatabaseManager:
         self.database_url = f"sqlite+aiosqlite:///{db_path}"
         self.engine = create_async_engine(self.database_url, echo=False)
 
-        # 创建同步引擎用于初始化
-        sync_engine = create_engine(f"sqlite:///{db_path}", echo=False)
-
-        # 初始化数据库表
-        SQLModel.metadata.create_all(sync_engine)
+    async def initialize(self):
+        """异步初始化数据库表"""
+        async with self.engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
 
     async def create_conversation(
         self,
