@@ -271,9 +271,11 @@ class ToolManager:
                     "name": f"builtin.{subtool_name}",
                     "description": description,
                     "category": "builtin",
-                    "version": builtin_tool.config.version
-                    if hasattr(builtin_tool.config, "version")
-                    else "1.0.0",
+                    "version": (
+                        builtin_tool.config.version
+                        if hasattr(builtin_tool.config, "version")
+                        else "1.0.0"
+                    ),
                     "enabled": is_enabled,
                     "active": is_active,
                     "parent": "builtin",
