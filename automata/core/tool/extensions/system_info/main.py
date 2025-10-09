@@ -6,6 +6,14 @@
 
 import platform
 
+try:
+    import psutil  # type: ignore
+
+    HAS_PSUTIL = True
+except ImportError:
+    psutil = None
+    HAS_PSUTIL = False
+
 from agents import FunctionTool, function_tool
 
 from automata.core.tool.base import BaseTool, ToolConfig
@@ -35,9 +43,7 @@ def get_system_info() -> str:
         architecture = platform.architecture()[0]
 
         # 尝试获取内存和CPU信息
-        try:
-            import psutil  # type: ignore
-
+        if HAS_PSUTIL:
             # 获取内存信息
             memory = psutil.virtual_memory()
             memory_info = f"总内存: {memory.total // (1024**3)}GB, 可用: {memory.available // (1024**3)}GB"
@@ -45,7 +51,7 @@ def get_system_info() -> str:
             # 获取CPU信息
             cpu_count = psutil.cpu_count()
             cpu_info = f"CPU核心数: {cpu_count}"
-        except ImportError:
+        else:
             memory_info = "内存信息: 需要安装 psutil"
             cpu_info = "CPU信息: 需要安装 psutil"
 

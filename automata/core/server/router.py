@@ -8,8 +8,15 @@ import asyncio
 import json
 import logging
 import os
+import time
+import traceback
 
+from agents import Runner
+from agents.extensions.memory import SQLAlchemySession
 from quart import jsonify, request
+
+from ..config.config import config_manager
+from ..tool import get_tool_manager
 
 
 def setup_routes(app, dashboard):
@@ -54,8 +61,6 @@ def setup_routes(app, dashboard):
             )
 
             # 获取或创建Agent session
-            from agents.extensions.memory import SQLAlchemySession
-
             if conversation_id not in dashboard.agent_sessions:
                 # 为这个对话创建一个新的SQLAlchemySession，使用现有的数据库引擎
                 agent_session = await asyncio.to_thread(
@@ -77,10 +82,6 @@ def setup_routes(app, dashboard):
             dashboard.cleanup_old_sessions()
 
             # 使用OpenAI Agent SDK的session调用LLM
-            import time
-
-            from agents import Runner
-
             time.time()
             result = await Runner.run(
                 agent,
@@ -100,8 +101,6 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
-            import traceback
-
             traceback.print_exc()
             return jsonify({"error": str(e)}), 500
 
@@ -219,8 +218,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/config", methods=["GET"])
     async def get_config():
         """获取配置"""
-        from ..config.config import config_manager
-
         try:
             config = config_manager.load_config()
             return jsonify(config)
@@ -230,8 +227,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/config", methods=["PUT"])
     async def update_config():
         """更新配置并热重载"""
-        from ..config.config import config_manager
-
         try:
             data = await request.get_json()
 
@@ -283,8 +278,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools", methods=["GET"])
     async def get_tools():
         """获取所有工具状态"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             tools_status = tool_mgr.get_all_tools_status()
@@ -300,8 +293,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/<tool_name>", methods=["GET"])
     async def get_tool_status(tool_name):
         """获取指定工具状态"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             status = tool_mgr.get_tool_status(tool_name)
@@ -319,8 +310,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/<tool_name>/enable", methods=["POST"])
     async def enable_tool(tool_name):
         """启用工具"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.enable_tool(tool_name):
@@ -337,8 +326,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/<tool_name>/disable", methods=["POST"])
     async def disable_tool(tool_name):
         """禁用工具"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.disable_tool(tool_name):
@@ -355,8 +342,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/builtin/<sub_tool>/enable", methods=["POST"])
     async def enable_builtin_tool(sub_tool):
         """启用内置子工具"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.enable_builtin_tool(sub_tool):
@@ -375,8 +360,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/builtin/<sub_tool>/disable", methods=["POST"])
     async def disable_builtin_tool(sub_tool):
         """禁用内置子工具"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.disable_builtin_tool(sub_tool):
@@ -395,8 +378,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/builtin", methods=["GET"])
     async def get_builtin_tools():
         """获取内置工具状态"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
             enabled_tools = tool_mgr.get_builtin_tools_status()
@@ -412,8 +393,6 @@ def setup_routes(app, dashboard):
     @app.route("/api/tools/save-and-reload", methods=["POST"])
     async def save_and_reload_tools():
         """保存工具状态并重新加载"""
-        from ..tool import get_tool_manager
-
         try:
             tool_mgr = get_tool_manager()
 

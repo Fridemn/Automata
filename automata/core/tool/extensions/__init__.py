@@ -7,10 +7,12 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 import logging
 import os
 import sys
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -103,8 +105,6 @@ class ExtensionLoader:
             # 获取工具类
             if hasattr(module, "create_tool"):
                 # 尝试调用create_tool，传递task_manager如果它接受参数
-                import inspect
-
                 create_tool_sig = inspect.signature(module.create_tool)
                 if len(create_tool_sig.parameters) > 0:
                     tool = module.create_tool(task_manager=task_manager)
@@ -130,8 +130,6 @@ class ExtensionLoader:
 
         except Exception as e:
             logger.exception(f"Failed to load extension {extension.name}: {e}")
-            import traceback
-
             traceback.print_exc()
 
         return None

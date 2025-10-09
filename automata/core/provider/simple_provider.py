@@ -3,10 +3,10 @@ from __future__ import annotations
 import sys
 from typing import Any
 
+from automata.core.utils.path_utils import get_project_root
+
 
 def _get_project_root():
-    from automata.core.utils.path_utils import get_project_root
-
     return get_project_root()
 
 

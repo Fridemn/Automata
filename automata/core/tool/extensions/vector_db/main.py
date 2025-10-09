@@ -6,6 +6,7 @@ Vector database tools for semantic search and knowledge management
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Annotated, Any
@@ -87,10 +88,9 @@ class VectorDBTool(BaseTool):
             if results["embeddings"]:
                 existing_dim = len(results["embeddings"][0])
                 return existing_dim == embedding_dim
-        except Exception:
-            pass
-
-        return False
+        except Exception as e:
+            logger.exception(f"检查向量维度失败: {e}")
+            return False
 
     def add_texts(
         self,
@@ -170,8 +170,6 @@ class VectorDBTool(BaseTool):
         ) -> str:
             """将文本添加到向量数据库"""
             try:
-                import json
-
                 parsed_metadatas = json.loads(metadatas) if metadatas else []
                 ids = self.add_texts(texts, parsed_metadatas)
                 return f"成功添加 {len(texts)} 个文本到向量数据库，ID: {ids}"
