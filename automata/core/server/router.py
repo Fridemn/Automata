@@ -366,12 +366,9 @@ def setup_routes(app, dashboard):
                         "status": "success",
                     },
                 )
-            return (
-                jsonify(
-                    {"error": f"Failed to enable builtin tool {sub_tool}"},
-                ),
-                400,
-            )
+            return jsonify(
+                {"error": f"Failed to enable builtin tool {sub_tool}"},
+            ), 400
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -389,12 +386,9 @@ def setup_routes(app, dashboard):
                         "status": "success",
                     },
                 )
-            return (
-                jsonify(
-                    {"error": f"Failed to disable builtin tool {sub_tool}"},
-                ),
-                400,
-            )
+            return jsonify(
+                {"error": f"Failed to disable builtin tool {sub_tool}"},
+            ), 400
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
