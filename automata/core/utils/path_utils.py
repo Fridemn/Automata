@@ -25,11 +25,6 @@ def get_extension_config_file() -> str:
     return os.path.join(get_data_dir(), 'extension_config.json')
 
 
-def get_dashboard_dir() -> str:
-    """Get the dashboard directory path"""
-    return os.path.join(get_project_root(), 'dashboard')
-
-
 def get_static_folder() -> str:
     """Get the static files directory path"""
-    return os.path.join(get_dashboard_dir(), 'dist')
+    return os.path.join(get_data_dir(), 'dist')
