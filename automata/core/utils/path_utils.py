@@ -12,7 +12,7 @@ def get_project_root() -> str:
 
 
 def get_data_dir() -> str:
-    return os.path.join(get_project_root(), 'automata', 'data')
+    return os.path.join(get_project_root(), 'data')
 
 
 def get_config_file() -> str:

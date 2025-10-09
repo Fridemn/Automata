@@ -6,6 +6,7 @@ Vector database tools for semantic search and knowledge management
 
 import os
 import chromadb
+import chromadb.errors
 import logging
 from typing import List, Dict, Any, Annotated
 from agents import function_tool
@@ -64,7 +65,7 @@ class VectorDBTool(BaseTool):
             # 尝试获取现有集合
             self.collection = self.client.get_collection(name=self.collection_name)
             logger.info(f"Using existing collection: {self.collection_name}")
-        except ValueError:
+        except (ValueError, chromadb.errors.NotFoundError):
             # 集合不存在，创建新集合
             self.collection = self.client.create_collection(name=self.collection_name)
             logger.info(f"Created new collection: {self.collection_name}")
