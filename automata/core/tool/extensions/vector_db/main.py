@@ -198,6 +198,7 @@ class VectorDBTool(BaseTool):
                         results["documents"][0],
                         results["metadatas"][0],
                         results["distances"][0],
+                        strict=False,
                     ),
                 ):
                     response += f"{i + 1}. 相似度: {1 - distance:.3f}\n"
@@ -225,6 +226,7 @@ class VectorDBTool(BaseTool):
                     data["ids"],
                     data["documents"],
                     data["metadatas"],
+                    strict=False,
                 ):
                     if id_ == doc_id:
                         response = f"文档 ID: {id_}\n\n"
@@ -266,6 +268,7 @@ class VectorDBTool(BaseTool):
                         data["ids"],
                         data["documents"],
                         data["metadatas"],
+                        strict=False,
                     ),
                 ):
                     response += f"{i + 1}. ID: {doc_id}\n"
