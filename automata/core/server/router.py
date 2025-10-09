@@ -18,6 +18,8 @@ from quart import jsonify, request
 from ..config.config import config_manager
 from ..tool import get_tool_manager
 
+logger = logging.getLogger(__name__)
+
 
 def setup_routes(app, dashboard):
     """设置所有路由"""
@@ -100,7 +102,7 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
-            traceback.print_exc()
+            logger.exception(f"Chat request failed: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/conversations", methods=["GET"])
@@ -123,6 +125,7 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
+            logger.exception(f"Failed to get conversations: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/conversations", methods=["POST"])
@@ -151,6 +154,7 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
+            logger.exception(f"Failed to create conversation: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/conversations/<conversation_id>", methods=["DELETE"])
@@ -167,6 +171,7 @@ def setup_routes(app, dashboard):
             return jsonify({"error": "Conversation not found"}), 404
 
         except Exception as e:
+            logger.exception(f"Failed to delete conversation {conversation_id}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/conversations/<conversation_id>/switch", methods=["POST"])
@@ -189,6 +194,7 @@ def setup_routes(app, dashboard):
             return jsonify({"error": "Conversation not found"}), 404
 
         except Exception as e:
+            logger.exception(f"Failed to switch to conversation {conversation_id}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/conversations/<conversation_id>/history", methods=["GET"])
@@ -212,6 +218,9 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
+            logger.exception(
+                f"Failed to get conversation history for {conversation_id}: {e}",
+            )
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/config", methods=["GET"])
@@ -221,6 +230,7 @@ def setup_routes(app, dashboard):
             config = config_manager.load_config()
             return jsonify(config)
         except Exception as e:
+            logger.exception(f"Failed to get config: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/config", methods=["PUT"])
@@ -272,6 +282,7 @@ def setup_routes(app, dashboard):
                 {"message": "Configuration updated and reloaded successfully"},
             )
         except Exception as e:
+            logger.exception(f"Failed to update config: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools", methods=["GET"])
@@ -287,6 +298,7 @@ def setup_routes(app, dashboard):
                 },
             )
         except Exception as e:
+            logger.exception(f"Failed to get tools: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/<tool_name>", methods=["GET"])
@@ -304,6 +316,7 @@ def setup_routes(app, dashboard):
                 )
             return jsonify({"error": "Tool not found"}), 404
         except Exception as e:
+            logger.exception(f"Failed to get tool status for {tool_name}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/<tool_name>/enable", methods=["POST"])
@@ -320,6 +333,7 @@ def setup_routes(app, dashboard):
                 )
             return jsonify({"error": f"Failed to enable tool {tool_name}"}), 400
         except Exception as e:
+            logger.exception(f"Failed to enable tool {tool_name}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/<tool_name>/disable", methods=["POST"])
@@ -336,6 +350,7 @@ def setup_routes(app, dashboard):
                 )
             return jsonify({"error": f"Failed to disable tool {tool_name}"}), 400
         except Exception as e:
+            logger.exception(f"Failed to disable tool {tool_name}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/builtin/<sub_tool>/enable", methods=["POST"])
@@ -354,6 +369,7 @@ def setup_routes(app, dashboard):
                 {"error": f"Failed to enable builtin tool {sub_tool}"},
             ), 400
         except Exception as e:
+            logger.exception(f"Failed to enable builtin tool {sub_tool}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/builtin/<sub_tool>/disable", methods=["POST"])
@@ -372,6 +388,7 @@ def setup_routes(app, dashboard):
                 {"error": f"Failed to disable builtin tool {sub_tool}"},
             ), 400
         except Exception as e:
+            logger.exception(f"Failed to disable builtin tool {sub_tool}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/builtin", methods=["GET"])
@@ -387,6 +404,7 @@ def setup_routes(app, dashboard):
                 },
             )
         except Exception as e:
+            logger.exception(f"Failed to get builtin tools: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tools/save-and-reload", methods=["POST"])
@@ -424,6 +442,7 @@ def setup_routes(app, dashboard):
                 },
             )
         except Exception as e:
+            logger.exception(f"Failed to save and reload tools: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tasks", methods=["GET"])
@@ -451,6 +470,7 @@ def setup_routes(app, dashboard):
             )
 
         except Exception as e:
+            logger.exception(f"Failed to get tasks: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tasks/<task_id>", methods=["GET"])
@@ -471,6 +491,7 @@ def setup_routes(app, dashboard):
             return jsonify({"error": "Task not found"}), 404
 
         except Exception as e:
+            logger.exception(f"Failed to get task status for {task_id}: {e}")
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/tasks/<task_id>/cancel", methods=["POST"])
@@ -491,4 +512,5 @@ def setup_routes(app, dashboard):
             return jsonify({"error": "Task not found or cannot be cancelled"}), 404
 
         except Exception as e:
+            logger.exception(f"Failed to cancel task {task_id}: {e}")
             return jsonify({"error": str(e)}), 500

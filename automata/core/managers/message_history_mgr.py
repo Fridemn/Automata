@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from agents.extensions.memory import SQLAlchemySession
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ..db import DatabaseManager
@@ -169,7 +172,10 @@ class MessageHistoryManager:
                 try:
                     items = await session.get_items()
                     return len(items)
-                except Exception:
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get message count for conversation {conversation_id}: {e}",
+                    )
                     return 0
         return 0
 
@@ -181,6 +187,9 @@ class MessageHistoryManager:
                 await session.clear_session()
                 del self.sessions[conversation_id]
                 return True
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    f"Failed to delete messages for conversation {conversation_id}: {e}",
+                )
                 return False
         return True

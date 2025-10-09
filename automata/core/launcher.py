@@ -7,10 +7,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import os
 import sys
 
 from automata.core.utils.path_utils import get_project_root
+
+logger = logging.getLogger(__name__)
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, get_project_root())
@@ -244,8 +247,8 @@ class AutomataLauncher:
             # 清理工具管理器
             tool_mgr = get_tool_manager()
             await tool_mgr.cleanup()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error during cleanup: {e}")
 
     async def run_web_mode(self):
         """运行Web模式"""
