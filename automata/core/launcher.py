@@ -234,7 +234,7 @@ class AutomataLauncher:
 
     async def _init_session(self):
         """设置会话"""
-        self.session = await asyncio.to_thread(SQLiteSession, "automata_cli")
+        self.session = SQLiteSession("automata_cli")
 
         return self.session
 

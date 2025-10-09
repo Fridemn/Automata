@@ -21,8 +21,7 @@ class MessageHistoryManager:
     async def _get_session(self, conversation_id: str) -> SQLAlchemySession:
         """获取或创建对话的session"""
         if self.engine and conversation_id not in self.sessions:
-            self.sessions[conversation_id] = await asyncio.to_thread(
-                SQLAlchemySession,
+            self.sessions[conversation_id] = SQLAlchemySession(
                 f"automata_{conversation_id}",
                 engine=self.engine,
                 create_tables=True,

@@ -63,8 +63,7 @@ def setup_routes(app, dashboard):
             # 获取或创建Agent session
             if conversation_id not in dashboard.agent_sessions:
                 # 为这个对话创建一个新的SQLAlchemySession，使用现有的数据库引擎
-                agent_session = await asyncio.to_thread(
-                    SQLAlchemySession,
+                agent_session = SQLAlchemySession(
                     f"automata_{conversation_id}",
                     engine=dashboard.context_mgr.db.engine,
                     create_tables=True,
