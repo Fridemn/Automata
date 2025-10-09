@@ -5,7 +5,7 @@
       <div v-for="(section, sectionKey) in config" :key="sectionKey" class="config-section">
         <h3>{{ getSectionTitle(sectionKey as string) }}</h3>
         <div v-for="(field, fieldKey) in section" :key="fieldKey" class="form-group">
-          <label :for="`${sectionKey}_${fieldKey}`">{{ field.label }}</label>
+          <label v-if="field.type !== 'checkbox'" :for="`${sectionKey}_${fieldKey}`">{{ field.label }}</label>
           <input
             v-if="field.type === 'text' || field.type === 'password' || field.type === 'number'"
             :id="`${sectionKey}_${fieldKey}`"
@@ -23,7 +23,16 @@
             :rows="field.rows || 4"
             :placeholder="`输入${field.label}`"
           ></textarea>
-          <label v-else-if="field.type === 'checkbox'">
+          <select
+            v-else-if="field.type === 'select'"
+            :id="`${sectionKey}_${fieldKey}`"
+            v-model="field.value"
+          >
+            <option v-for="option in field.options" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+          <label v-else-if="field.type === 'checkbox'" class="checkbox-label">
             <input
               :id="`${sectionKey}_${fieldKey}`"
               v-model="field.value"
@@ -55,6 +64,7 @@ interface FieldConfig {
   max?: number
   step?: number
   rows?: number
+  options?: string[]
 }
 
 interface Config {
@@ -183,6 +193,15 @@ $app-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
           margin-bottom: 5px;
           font-weight: 500;
           color: $app-text;
+
+          // 特殊处理checkbox
+          &.checkbox-label,
+          input[type="checkbox"] + & {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: normal;
+          }
         }
 
         input[type="text"],

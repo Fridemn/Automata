@@ -320,14 +320,43 @@ class AutomataDashboard:
             from ..config.config import config_manager
             try:
                 data = await request.get_json()
-                # 更新配置文件
-                with open(config_manager.config_file, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=4, ensure_ascii=False)
+
+                # 分离核心配置和扩展配置
+                core_config = {}
+                extension_config = {}
+
+                # 获取配置section列表
+                core_sections = config_manager.get_core_sections()
+                extension_sections = config_manager.get_extension_sections()
+
+                # 分离数据到对应的配置
+                for section in core_sections:
+                    if section in data:
+                        core_config[section] = data[section]
+
+                for section in extension_sections:
+                    if section in data:
+                        extension_config[section] = data[section]
+
+                # 保存核心配置
+                if core_config:
+                    with open(config_manager.core_config_file, 'w', encoding='utf-8') as f:
+                        json.dump(core_config, f, indent=4, ensure_ascii=False)
+
+                # 保存扩展配置
+                if extension_config:
+                    with open(config_manager.extension_config_file, 'w', encoding='utf-8') as f:
+                        json.dump(extension_config, f, indent=4, ensure_ascii=False)
+
                 # 热重载配置管理器
                 config_manager.reload_config()
                 # 重新初始化LLM provider和agent配置
                 self._init_llm_provider()
                 return jsonify({"message": "Configuration updated and reloaded successfully"})
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 

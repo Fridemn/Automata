@@ -14,7 +14,7 @@ from automata.core.utils.path_utils import get_project_root
 sys.path.insert(0, get_project_root())
 
 from automata.core.server.web_server import AutomataDashboard
-from automata.core.config.config import get_openai_config, get_agent_config
+from automata.core.config.config import get_openai_config, get_agent_config, get_extensions_config, get_mcp_config
 from automata.core.tool import get_tool_manager, initialize_tools
 from automata.core.tasks.task_manager import TaskManager
 from automata.core.db.database import DatabaseManager
@@ -158,18 +158,22 @@ class AutomataLauncher:
         agent_config = self.container.resolve("agent_config")
         task_manager = self.container.resolve("TaskManager")
 
+        # 获取扩展和MCP配置
+        extensions_config = get_extensions_config()
+        mcp_config = get_mcp_config()
+
         tool_config = {
             "builtin": {
                 "enabled": agent_config.get("enable_tools", True)
             },
             "extensions": {
-                "enabled": True  # TODO: 从配置中获取
+                "enabled": extensions_config.get("enabled", True)
             },
             "mcp": {
-                "enabled": agent_config.get("enable_mcp", False),
+                "enabled": mcp_config.get("enabled", False),
                 "filesystem": {
-                    "enabled": True,  # TODO: 从配置中获取
-                    "root_path": os.getcwd()
+                    "enabled": mcp_config.get("filesystem", {}).get("enabled", True),
+                    "root_path": mcp_config.get("filesystem", {}).get("root_path", os.getcwd())
                 }
             }
         }
