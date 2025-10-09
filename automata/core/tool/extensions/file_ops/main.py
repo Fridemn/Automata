@@ -4,11 +4,11 @@ file_ops 扩展
 File operations extension
 """
 
-import os
 from pathlib import Path
-from typing import List
-from automata.core.tool.base import BaseTool, ToolConfig
+
 from agents import function_tool
+
+from automata.core.tool.base import BaseTool, ToolConfig
 
 
 class FileOpsTool(BaseTool):
@@ -53,7 +53,7 @@ class FileOpsTool(BaseTool):
                 if not p.is_file():
                     return f"路径不是文件: {file_path}"
 
-                with open(p, 'r', encoding='utf-8') as f:
+                with open(p, encoding="utf-8") as f:
                     lines = f.readlines()
 
                 content = "".join(lines[:max_lines])
@@ -79,7 +79,7 @@ class FileOpsTool(BaseTool):
                     "size": stat.st_size,
                     "modified": stat.st_mtime,
                     "is_file": p.is_file(),
-                    "is_dir": p.is_dir()
+                    "is_dir": p.is_dir(),
                 }
 
                 return "\n".join(f"{k}: {v}" for k, v in info.items())
@@ -99,6 +99,6 @@ def create_tool() -> FileOpsTool:
     config = ToolConfig(
         name="file_ops",
         description="File operations extension",
-        enabled=True
+        enabled=True,
     )
     return FileOpsTool(config)

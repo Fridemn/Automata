@@ -1,24 +1,27 @@
-import asyncio
-import os
-from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime, timezone
-from sqlmodel import create_engine, SQLModel, Session, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from automata.core.utils.path_utils import get_project_root, get_data_dir
+from __future__ import annotations
 
-from .models import Conversation, Session as SessionModel, ConversationData, Task
+import os
+from datetime import datetime, timezone
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlmodel import SQLModel, select
+
+from automata.core.utils.path_utils import get_data_dir
+
+from .models import Conversation
+from .models import Session as SessionModel
 
 
 class DatabaseManager:
     """数据库管理器 - 处理所有数据库操作"""
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             # 默认数据库路径
             data_dir = get_data_dir()
             os.makedirs(data_dir, exist_ok=True)
-            db_path = os.path.join(data_dir, 'automata.db')
+            db_path = os.path.join(data_dir, "automata.db")
 
         # 使用异步SQLite引擎
         self.database_url = f"sqlite+aiosqlite:///{db_path}"
@@ -34,9 +37,9 @@ class DatabaseManager:
         session_id: str,
         platform_id: str,
         user_id: str,
-        title: Optional[str] = None,
-        content: Optional[List[Dict[str, Any]]] = None,
-        persona_id: Optional[str] = None,
+        title: str | None = None,
+        content: list[dict[str, Any]] | None = None,
+        persona_id: str | None = None,
     ) -> Conversation:
         """创建新对话"""
         conversation = Conversation(
@@ -55,22 +58,29 @@ class DatabaseManager:
 
         return conversation
 
-    async def get_conversation_by_id(self, conversation_id: str) -> Optional[Conversation]:
+    async def get_conversation_by_id(
+        self,
+        conversation_id: str,
+    ) -> Conversation | None:
         """根据ID获取对话"""
         async with AsyncSession(self.engine) as session:
-            statement = select(Conversation).where(Conversation.conversation_id == conversation_id)
+            statement = select(Conversation).where(
+                Conversation.conversation_id == conversation_id,
+            )
             result = await session.execute(statement)
             return result.scalar_one_or_none()
 
     async def update_conversation(
         self,
         conversation_id: str,
-        content: Optional[List[Dict[str, Any]]] = None,
-        title: Optional[str] = None,
-    ) -> Optional[Conversation]:
+        content: list[dict[str, Any]] | None = None,
+        title: str | None = None,
+    ) -> Conversation | None:
         """更新对话内容"""
         async with AsyncSession(self.engine) as session:
-            statement = select(Conversation).where(Conversation.conversation_id == conversation_id)
+            statement = select(Conversation).where(
+                Conversation.conversation_id == conversation_id,
+            )
             result = await session.execute(statement)
             conversation = result.scalar_one_or_none()
 
@@ -89,7 +99,9 @@ class DatabaseManager:
     async def delete_conversation(self, conversation_id: str) -> bool:
         """删除对话"""
         async with AsyncSession(self.engine) as session:
-            statement = select(Conversation).where(Conversation.conversation_id == conversation_id)
+            statement = select(Conversation).where(
+                Conversation.conversation_id == conversation_id,
+            )
             result = await session.execute(statement)
             conversation = result.scalar_one_or_none()
 
@@ -101,12 +113,12 @@ class DatabaseManager:
 
     async def get_conversations(
         self,
-        session_id: Optional[str] = None,
-        platform_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        session_id: str | None = None,
+        platform_id: str | None = None,
+        user_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Conversation]:
+    ) -> list[Conversation]:
         """获取对话列表"""
         async with AsyncSession(self.engine) as session:
             statement = select(Conversation)
@@ -118,14 +130,20 @@ class DatabaseManager:
             if user_id:
                 statement = statement.where(Conversation.user_id == user_id)
 
-            statement = statement.order_by(Conversation.updated_at.desc()).limit(limit).offset(offset)
+            statement = (
+                statement.order_by(Conversation.updated_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
             result = await session.execute(statement)
             return list(result.scalars().all())
 
-    async def get_session(self, session_id: str) -> Optional[SessionModel]:
+    async def get_session(self, session_id: str) -> SessionModel | None:
         """获取会话"""
         async with AsyncSession(self.engine) as session:
-            statement = select(SessionModel).where(SessionModel.session_id == session_id)
+            statement = select(SessionModel).where(
+                SessionModel.session_id == session_id,
+            )
             result = await session.execute(statement)
             return result.scalar_one_or_none()
 
@@ -134,13 +152,15 @@ class DatabaseManager:
         session_id: str,
         platform_id: str,
         user_id: str,
-        current_conversation_id: Optional[str] = None,
-        session_data: Optional[Dict[str, Any]] = None,
+        current_conversation_id: str | None = None,
+        session_data: dict[str, Any] | None = None,
     ) -> SessionModel:
         """创建或更新会话"""
         async with AsyncSession(self.engine) as session:
             # 查找现有会话
-            statement = select(SessionModel).where(SessionModel.session_id == session_id)
+            statement = select(SessionModel).where(
+                SessionModel.session_id == session_id,
+            )
             result = await session.execute(statement)
             session_obj = result.scalar_one_or_none()
 

@@ -4,11 +4,13 @@
 负责工具状态的持久化和恢复
 """
 
+from __future__ import annotations
+
 import json
-import os
 import logging
-from typing import Any, Dict, List, Set
-from ..utils.path_utils import get_data_dir
+import os
+
+from automata.core.utils.path_utils import get_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -16,24 +18,26 @@ logger = logging.getLogger(__name__)
 class ToolStateManager:
     """工具状态管理器"""
 
-    def __init__(self, state_file: str = None):
+    def __init__(self, state_file: str | None = None):
         if state_file is None:
-            state_file = os.path.join(get_data_dir(), 'tool_states.json')
+            state_file = os.path.join(get_data_dir(), "tool_states.json")
         self.state_file = state_file
-        self._disabled_tools: Set[str] = set()
-        self._builtin_disabled_tools: Set[str] = set()
+        self._disabled_tools: set[str] = set()
+        self._builtin_disabled_tools: set[str] = set()
         self._load_states()
 
     def _load_states(self) -> None:
         """加载状态"""
         try:
             if os.path.exists(self.state_file):
-                with open(self.state_file, 'r', encoding='utf-8') as f:
+                with open(self.state_file, encoding="utf-8") as f:
                     states = json.load(f)
-                    self._disabled_tools = set(states.get('disabled_tools', []))
-                    self._builtin_disabled_tools = set(states.get('builtin_disabled_tools', []))
+                    self._disabled_tools = set(states.get("disabled_tools", []))
+                    self._builtin_disabled_tools = set(
+                        states.get("builtin_disabled_tools", []),
+                    )
         except Exception as e:
-            logger.error(f"加载工具状态失败: {e}")
+            logger.exception(f"加载工具状态失败: {e}")
             self._disabled_tools = set()
             self._builtin_disabled_tools = set()
 
@@ -42,13 +46,13 @@ class ToolStateManager:
         try:
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
             states = {
-                'disabled_tools': list(self._disabled_tools),
-                'builtin_disabled_tools': list(self._builtin_disabled_tools)
+                "disabled_tools": list(self._disabled_tools),
+                "builtin_disabled_tools": list(self._builtin_disabled_tools),
             }
-            with open(self.state_file, 'w', encoding='utf-8') as f:
+            with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(states, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"保存工具状态失败: {e}")
+            logger.exception(f"保存工具状态失败: {e}")
 
     def is_tool_disabled(self, name: str) -> bool:
         """检查工具是否被禁用"""
@@ -78,10 +82,10 @@ class ToolStateManager:
         self._builtin_disabled_tools.discard(name)
         self._save_states()
 
-    def get_disabled_tools(self) -> Set[str]:
+    def get_disabled_tools(self) -> set[str]:
         """获取被禁用的工具列表"""
         return self._disabled_tools.copy()
 
-    def get_disabled_builtin_tools(self) -> Set[str]:
+    def get_disabled_builtin_tools(self) -> set[str]:
         """获取被禁用的builtin子工具列表"""
         return self._builtin_disabled_tools.copy()

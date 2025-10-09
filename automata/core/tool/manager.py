@@ -4,32 +4,37 @@
 统一管理所有工具的注册、初始化和生命周期
 """
 
-import asyncio
-import os
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
-from automata.core.utils.path_utils import get_data_dir
-from agents import FunctionTool
-from .base import ToolRegistry, ToolConfig
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from .async_task_tool import create_async_task_tool
+from .base import ToolRegistry
+from .extension_manager import ExtensionManager
 from .mcp import create_filesystem_mcp_tool
 from .state_manager import ToolStateManager
-from .extension_manager import ExtensionManager
 
 if TYPE_CHECKING:
-    from ..tasks.task_manager import TaskManager
+    from agents import FunctionTool
+
+    from automata.core.tasks.task_manager import TaskManager
 
 
 class ToolManager:
     """工具管理器"""
 
-    def __init__(self, data_dir: str = None, task_manager: Optional['TaskManager'] = None):
+    def __init__(
+        self,
+        data_dir: str | None = None,
+        task_manager: TaskManager | None = None,
+    ):
         self.registry = ToolRegistry()
         self.state_manager = ToolStateManager()
         self.extension_manager = ExtensionManager()
         self.task_manager = task_manager
         self._initialized = False
 
-    async def initialize(self, config: Dict[str, Any] = None) -> None:
+    async def initialize(self, config: dict[str, Any] | None = None) -> None:
         """初始化工具管理器"""
         if self._initialized:
             return
@@ -42,7 +47,7 @@ class ToolManager:
         if async_task_config.get("enabled", True):
             async_task_tool = create_async_task_tool(
                 name="async_task",
-                task_manager=self.task_manager
+                task_manager=self.task_manager,
             )
             self.registry.register(async_task_tool, "async_task")
 
@@ -54,7 +59,7 @@ class ToolManager:
                 fs_tool = create_filesystem_mcp_tool(
                     name="filesystem_mcp",
                     root_path=mcp_config.get("filesystem", {}).get("root_path"),
-                    task_manager=self.task_manager
+                    task_manager=self.task_manager,
                 )
                 self.registry.register(fs_tool, "mcp")
 
@@ -64,13 +69,22 @@ class ToolManager:
         # 加载所有扩展
         extensions_config = config.get("extensions", {})
         if extensions_config.get("enabled", True):
-            extension_tools = self.extension_manager.load_all_extensions(self.task_manager)
+            extension_tools = self.extension_manager.load_all_extensions(
+                self.task_manager,
+            )
             for tool in extension_tools:
                 category = "extensions"
                 # 尝试从扩展信息中获取类别
                 extension_name = tool.name
-                if extension_name in self.extension_manager.extension_loader.loaded_extensions:
-                    ext_info = self.extension_manager.extension_loader.loaded_extensions[extension_name]
+                if (
+                    extension_name
+                    in self.extension_manager.extension_loader.loaded_extensions
+                ):
+                    ext_info = (
+                        self.extension_manager.extension_loader.loaded_extensions[
+                            extension_name
+                        ]
+                    )
                     category = ext_info.category
                 self.registry.register(tool, category)
 
@@ -83,7 +97,7 @@ class ToolManager:
         """连接所有MCP服务器"""
         mcp_tools = self.registry.get_tools_by_category("mcp")
         for tool in mcp_tools:
-            if hasattr(tool, 'connect_all_servers'):
+            if hasattr(tool, "connect_all_servers"):
                 await tool.connect_all_servers()
 
     def register_tool(self, tool: Any, category: str = "general") -> None:
@@ -94,31 +108,31 @@ class ToolManager:
         """注销工具"""
         self.registry.unregister(name)
 
-    def get_tool(self, name: str) -> Optional[Any]:
+    def get_tool(self, name: str) -> Any | None:
         """获取工具"""
         return self.registry.get_tool(name)
 
-    def get_tools_by_category(self, category: str) -> List[Any]:
+    def get_tools_by_category(self, category: str) -> list[Any]:
         """按分类获取工具"""
         return self.registry.get_tools_by_category(category)
 
-    def get_all_tools(self) -> List[Any]:
+    def get_all_tools(self) -> list[Any]:
         """获取所有工具"""
         return self.registry.get_all_tools()
 
-    def get_enabled_tools(self) -> List[Any]:
+    def get_enabled_tools(self) -> list[Any]:
         """获取启用的工具"""
         return self.registry.get_enabled_tools()
 
-    def get_all_function_tools(self) -> List[FunctionTool]:
+    def get_all_function_tools(self) -> list[FunctionTool]:
         """获取所有函数工具"""
         return self.registry.get_all_function_tools()
 
-    def get_mcp_servers(self) -> List[Any]:
+    def get_mcp_servers(self) -> list[Any]:
         """获取所有 MCP 服务器"""
         mcp_servers = []
         for tool in self.get_tools_by_category("mcp"):
-            if hasattr(tool, 'get_mcp_servers'):
+            if hasattr(tool, "get_mcp_servers"):
                 mcp_servers.extend(tool.get_mcp_servers())
         return mcp_servers
 
@@ -180,7 +194,7 @@ class ToolManager:
 
         return False
 
-    def get_tool_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_status(self, name: str) -> dict[str, Any] | None:
         """获取工具状态信息
 
         Args:
@@ -191,10 +205,10 @@ class ToolManager:
         """
         # 检查是否是builtin子工具
         if name.startswith("builtin."):
-            subtool_name = name.split(".", 1)[1]
+            name.split(".", 1)[1]
             builtin_subtools = self._get_builtin_subtools_status()
             for subtool in builtin_subtools:
-                if subtool['name'] == name:
+                if subtool["name"] == name:
                     return subtool
             return None
 
@@ -206,7 +220,7 @@ class ToolManager:
         # 如果不在注册表中，在扩展中查找
         return self.extension_manager.get_extension_status(name)
 
-    def get_all_tools_status(self) -> List[Dict[str, Any]]:
+    def get_all_tools_status(self) -> list[dict[str, Any]]:
         """获取所有工具的状态信息"""
         status_list = []
 
@@ -214,7 +228,7 @@ class ToolManager:
         registry_statuses = self.registry.get_all_tools_status()
 
         for status in registry_statuses:
-            if status['name'] == 'builtin':
+            if status["name"] == "builtin":
                 # 展开builtin工具的子工具
                 builtin_subtools = self._get_builtin_subtools_status()
                 status_list.extend(builtin_subtools)
@@ -222,7 +236,7 @@ class ToolManager:
                 status_list.append(status)
 
         # 添加扩展的状态（避免重复）
-        existing_names = {status['name'] for status in status_list}
+        existing_names = {status["name"] for status in status_list}
         for tool in self.extension_manager.get_loaded_tools():
             if tool.name not in existing_names:
                 ext_status = self.extension_manager.get_extension_status(tool.name)
@@ -231,7 +245,7 @@ class ToolManager:
 
         return status_list
 
-    def _get_builtin_subtools_status(self) -> List[Dict[str, Any]]:
+    def _get_builtin_subtools_status(self) -> list[dict[str, Any]]:
         """获取builtin工具子工具的状态"""
         builtin_tool = self.get_tool("builtin")
         if not builtin_tool:
@@ -242,7 +256,7 @@ class ToolManager:
             "time": "获取当前时间",
             "calculator": "数学计算器",
             "file": "文件操作工具",
-            "system": "系统信息工具"
+            "system": "系统信息工具",
         }
 
         disabled_tools = self.state_manager.get_disabled_builtin_tools()
@@ -252,24 +266,27 @@ class ToolManager:
             is_enabled = subtool_name not in disabled_tools
             is_active = builtin_tool.active and is_enabled
 
-            subtools_status.append({
-                "name": f"builtin.{subtool_name}",
-                "description": description,
-                "category": "builtin",
-                "version": builtin_tool.config.version if hasattr(builtin_tool.config, 'version') else "1.0.0",
-                "enabled": is_enabled,
-                "active": is_active,
-                "parent": "builtin"
-            })
+            subtools_status.append(
+                {
+                    "name": f"builtin.{subtool_name}",
+                    "description": description,
+                    "category": "builtin",
+                    "version": builtin_tool.config.version
+                    if hasattr(builtin_tool.config, "version")
+                    else "1.0.0",
+                    "enabled": is_enabled,
+                    "active": is_active,
+                    "parent": "builtin",
+                },
+            )
 
         return subtools_status
 
-    def get_builtin_tools_status(self) -> List[str]:
+    def get_builtin_tools_status(self) -> list[str]:
         """获取启用的内置子工具列表"""
         all_builtin_subtools = ["time", "calculator", "file", "system"]
         disabled_tools = self.state_manager.get_disabled_builtin_tools()
-        enabled_tools = [tool for tool in all_builtin_subtools if tool not in disabled_tools]
-        return enabled_tools
+        return [tool for tool in all_builtin_subtools if tool not in disabled_tools]
 
     def enable_builtin_tool(self, tool_name: str) -> bool:
         """启用内置工具的特定子工具
@@ -281,7 +298,7 @@ class ToolManager:
             bool: 是否成功启用
         """
         builtin_tool = self.get_tool("builtin")
-        if builtin_tool and hasattr(builtin_tool, 'enable_tool'):
+        if builtin_tool and hasattr(builtin_tool, "enable_tool"):
             builtin_tool.enable_tool(tool_name)
             return True
         return False
@@ -296,7 +313,7 @@ class ToolManager:
             bool: 是否成功禁用
         """
         builtin_tool = self.get_tool("builtin")
-        if builtin_tool and hasattr(builtin_tool, 'disable_tool'):
+        if builtin_tool and hasattr(builtin_tool, "disable_tool"):
             builtin_tool.disable_tool(tool_name)
             return True
         return False
@@ -335,7 +352,10 @@ class ToolManager:
 tool_manager = ToolManager()
 
 
-async def initialize_tools(config: Dict[str, Any] = None, task_manager=None) -> ToolManager:
+async def initialize_tools(
+    config: dict[str, Any] | None = None,
+    task_manager=None,
+) -> ToolManager:
     """初始化工具系统"""
     tool_manager.task_manager = task_manager
     await tool_manager.initialize(config)
@@ -348,11 +368,11 @@ def get_tool_manager() -> ToolManager:
 
 
 # 便捷函数
-def get_all_function_tools() -> List[FunctionTool]:
+def get_all_function_tools() -> list[FunctionTool]:
     """获取所有函数工具"""
     return tool_manager.get_all_function_tools()
 
 
-def get_mcp_servers() -> List[Any]:
+def get_mcp_servers() -> list[Any]:
     """获取所有 MCP 服务器"""
     return tool_manager.get_mcp_servers()

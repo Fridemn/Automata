@@ -3,12 +3,18 @@
 MCP (Model Context Protocol) 工具支持
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
-from typing import Any, Dict, List, Optional, Union
-from agents import FunctionTool
-from agents.mcp import MCPServer, MCPServerStdio, MCPServerSse, MCPServerStreamableHttp
+from typing import TYPE_CHECKING, Any
+
+from agents.mcp import MCPServer, MCPServerSse, MCPServerStdio, MCPServerStreamableHttp
+
 from .base import BaseTool, ToolConfig
+
+if TYPE_CHECKING:
+    from agents import FunctionTool
 
 
 class MCPTool(BaseTool):
@@ -16,8 +22,8 @@ class MCPTool(BaseTool):
 
     def __init__(self, config: ToolConfig, task_manager=None):
         super().__init__(config, task_manager)
-        self._servers: Dict[str, MCPServer] = {}
-        self._server_configs: Dict[str, Dict[str, Any]] = {}
+        self._servers: dict[str, MCPServer] = {}
+        self._server_configs: dict[str, dict[str, Any]] = {}
 
     def initialize(self) -> None:
         """初始化 MCP 服务器"""
@@ -25,7 +31,7 @@ class MCPTool(BaseTool):
         for server_name, server_config in server_configs.items():
             self.add_server(server_name, server_config)
 
-    def add_server(self, name: str, config: Dict[str, Any]) -> None:
+    def add_server(self, name: str, config: dict[str, Any]) -> None:
         """添加 MCP 服务器"""
         server_type = config.get("type", "stdio")
         server_config = config.get("config", {})
@@ -36,37 +42,39 @@ class MCPTool(BaseTool):
         if server_type == "stdio":
             server = MCPServerStdio(
                 name=name,
-                params=server_config
+                params=server_config,
             )
         elif server_type == "sse":
             server = MCPServerSse(
                 name=name,
-                params=server_config
+                params=server_config,
             )
         elif server_type == "streamable_http":
             server = MCPServerStreamableHttp(
                 name=name,
-                params=server_config
+                params=server_config,
             )
         else:
-            raise ValueError(f"Unsupported MCP server type: {server_type}")
+            msg = f"Unsupported MCP server type: {server_type}"
+            raise ValueError(msg)
 
         self._servers[name] = server
 
     async def connect_server(self, name: str) -> None:
         """连接 MCP 服务器"""
         if name not in self._servers:
-            raise ValueError(f"MCP server '{name}' not found")
+            msg = f"MCP server '{name}' not found"
+            raise ValueError(msg)
 
         server = self._servers[name]
-        if not hasattr(server, '_connected') or not server._connected:
+        if not hasattr(server, "_connected") or not server._connected:
             await server.connect()
 
     async def connect_all_servers(self) -> None:
         """连接所有 MCP 服务器"""
         tasks = []
         for name, server in self._servers.items():
-            if not hasattr(server, '_connected') or not server._connected:
+            if not hasattr(server, "_connected") or not server._connected:
                 tasks.append(self.connect_server(name))
 
         if tasks:
@@ -82,20 +90,20 @@ class MCPTool(BaseTool):
         if name in self._server_configs:
             del self._server_configs[name]
 
-    def get_server(self, name: str) -> Optional[MCPServer]:
+    def get_server(self, name: str) -> MCPServer | None:
         """获取 MCP 服务器"""
         return self._servers.get(name)
 
-    def get_servers(self) -> List[MCPServer]:
+    def get_servers(self) -> list[MCPServer]:
         """获取所有 MCP 服务器"""
         return list(self._servers.values())
 
-    def get_function_tools(self) -> List[FunctionTool]:
+    def get_function_tools(self) -> list[FunctionTool]:
         """获取函数工具列表"""
         # MCP 服务器本身就是工具，不需要额外的函数工具
         return []
 
-    def get_mcp_servers(self) -> List[MCPServer]:
+    def get_mcp_servers(self) -> list[MCPServer]:
         """获取 MCP 服务器列表（用于 Agent 初始化）"""
         if not self.active:
             return []
@@ -118,9 +126,14 @@ class MCPManager:
     """MCP 管理器"""
 
     def __init__(self):
-        self._tools: Dict[str, MCPTool] = {}
+        self._tools: dict[str, MCPTool] = {}
 
-    def create_tool(self, name: str, servers: Dict[str, Dict[str, Any]] = None, task_manager=None) -> MCPTool:
+    def create_tool(
+        self,
+        name: str,
+        servers: dict[str, dict[str, Any]] | None = None,
+        task_manager=None,
+    ) -> MCPTool:
         """创建 MCP 工具"""
         if servers is None:
             servers = {}
@@ -128,14 +141,14 @@ class MCPManager:
         config = ToolConfig(
             name=name,
             description=f"MCP tool: {name}",
-            config={"servers": servers}
+            config={"servers": servers},
         )
 
         tool = MCPTool(config, task_manager)
         self._tools[name] = tool
         return tool
 
-    def get_tool(self, name: str) -> Optional[MCPTool]:
+    def get_tool(self, name: str) -> MCPTool | None:
         """获取 MCP 工具"""
         return self._tools.get(name)
 
@@ -168,7 +181,11 @@ class MCPManager:
 
 
 # 便捷函数
-def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None, task_manager=None) -> MCPTool:
+def create_filesystem_mcp_tool(
+    name: str = "filesystem",
+    root_path: str | None = None,
+    task_manager=None,
+) -> MCPTool:
     """创建文件系统 MCP 工具"""
     if root_path is None:
         root_path = os.getcwd()
@@ -178,15 +195,15 @@ def create_filesystem_mcp_tool(name: str = "filesystem", root_path: str = None, 
             "type": "stdio",
             "config": {
                 "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-filesystem", root_path]
-            }
-        }
+                "args": ["-y", "@modelcontextprotocol/server-filesystem", root_path],
+            },
+        },
     }
 
     config = ToolConfig(
         name=name,
         description=f"Filesystem MCP tool for {root_path}",
-        config={"servers": servers}
+        config={"servers": servers},
     )
 
     return MCPTool(config, task_manager)

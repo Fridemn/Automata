@@ -5,17 +5,17 @@ Automata - AI 人格系统
 """
 
 import asyncio
-import sys
-import os
 import logging
+import os
+import sys
 
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 
 # 添加项目根目录到 Python 路径
@@ -32,5 +32,4 @@ Automata - AI 人格系统
 """
 
 if __name__ == "__main__":
-    print(logo_tmpl)
     asyncio.run(main())

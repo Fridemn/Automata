@@ -3,23 +3,29 @@
 基础工具类和接口
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Callable, Union, TYPE_CHECKING
 from dataclasses import dataclass
-from agents import FunctionTool
+from typing import TYPE_CHECKING, Any, Callable
+
+from automata.core.tasks.task_manager import TaskResult
 
 if TYPE_CHECKING:
-    from ..tasks.task_manager import TaskManager, TaskResult
+    from agents import FunctionTool
+
+    from automata.core.tasks.task_manager import TaskManager
 
 
 @dataclass
 class ToolConfig:
     """工具配置"""
+
     name: str
     description: str
     enabled: bool = True
-    version: Optional[str] = None
-    config: Dict[str, Any] = None
+    version: str | None = None
+    config: dict[str, Any] = None
 
     def __post_init__(self):
         if self.config is None:
@@ -29,10 +35,14 @@ class ToolConfig:
 class BaseTool(ABC):
     """工具基类"""
 
-    def __init__(self, config: ToolConfig, task_manager: Optional['TaskManager'] = None):
+    def __init__(
+        self,
+        config: ToolConfig,
+        task_manager: TaskManager | None = None,
+    ):
         self.config = config
         self.task_manager = task_manager
-        self._function_tools: List[FunctionTool] = []
+        self._function_tools: list[FunctionTool] = []
         self._active = True  # 工具是否激活状态
 
     @property
@@ -63,10 +73,9 @@ class BaseTool(ABC):
     @abstractmethod
     def initialize(self) -> None:
         """初始化工具"""
-        pass
 
     @abstractmethod
-    def get_function_tools(self) -> List[FunctionTool]:
+    def get_function_tools(self) -> list[FunctionTool]:
         """获取函数工具列表"""
         return self._function_tools
 
@@ -75,9 +84,9 @@ class BaseTool(ABC):
         session_id: str,
         task_type: str,
         description: str = "",
-        parameters: Optional[Dict[str, Any]] = None,
-        task_func: Optional[Callable[[], Any]] = None
-    ) -> Optional[str]:
+        parameters: dict[str, Any] | None = None,
+        task_func: Callable[[], Any] | None = None,
+    ) -> str | None:
         """创建异步任务"""
         if not self.task_manager:
             return None
@@ -87,7 +96,7 @@ class BaseTool(ABC):
             tool_name=self.name,
             task_type=task_type,
             description=description,
-            parameters=parameters
+            parameters=parameters,
         )
 
         if task_func:
@@ -105,15 +114,14 @@ class BaseTool(ABC):
 
     def cleanup(self) -> None:
         """清理资源"""
-        pass
 
 
 class ToolRegistry:
     """工具注册表"""
 
     def __init__(self):
-        self._tools: Dict[str, BaseTool] = {}
-        self._categories: Dict[str, List[str]] = {}
+        self._tools: dict[str, BaseTool] = {}
+        self._categories: dict[str, list[str]] = {}
 
     def register(self, tool: BaseTool, category: str = "general") -> None:
         """注册工具"""
@@ -132,25 +140,25 @@ class ToolRegistry:
             del self._tools[name]
 
             # 从分类中移除
-            for category, tools in self._categories.items():
+            for tools in self._categories.values():
                 if name in tools:
                     tools.remove(name)
                     break
 
-    def get_tool(self, name: str) -> Optional[BaseTool]:
+    def get_tool(self, name: str) -> BaseTool | None:
         """获取工具"""
         return self._tools.get(name)
 
-    def get_tools_by_category(self, category: str) -> List[BaseTool]:
+    def get_tools_by_category(self, category: str) -> list[BaseTool]:
         """按分类获取工具"""
         tool_names = self._categories.get(category, [])
         return [self._tools[name] for name in tool_names if name in self._tools]
 
-    def get_all_tools(self) -> List[BaseTool]:
+    def get_all_tools(self) -> list[BaseTool]:
         """获取所有工具"""
         return list(self._tools.values())
 
-    def get_enabled_tools(self) -> List[BaseTool]:
+    def get_enabled_tools(self) -> list[BaseTool]:
         """获取启用的工具"""
         return [tool for tool in self._tools.values() if tool.enabled]
 
@@ -184,7 +192,7 @@ class ToolRegistry:
             return True
         return False
 
-    def get_tool_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_status(self, name: str) -> dict[str, Any] | None:
         """获取工具状态信息
 
         Args:
@@ -201,22 +209,24 @@ class ToolRegistry:
                 "enabled": tool.enabled,
                 "active": tool.active,
                 "category": self._get_tool_category(name),
-                "version": getattr(tool.config, 'version', None)
+                "version": getattr(tool.config, "version", None),
             }
         return None
 
-    def get_all_tools_status(self) -> List[Dict[str, Any]]:
+    def get_all_tools_status(self) -> list[dict[str, Any]]:
         """获取所有工具的状态信息"""
         status_list = []
         for name, tool in self._tools.items():
-            status_list.append({
-                "name": tool.name,
-                "description": tool.description,
-                "enabled": tool.enabled,
-                "active": tool.active,
-                "category": self._get_tool_category(name),
-                "version": getattr(tool.config, 'version', None)
-            })
+            status_list.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "enabled": tool.enabled,
+                    "active": tool.active,
+                    "category": self._get_tool_category(name),
+                    "version": getattr(tool.config, "version", None),
+                },
+            )
         return status_list
 
     def _get_tool_category(self, tool_name: str) -> str:
@@ -226,7 +236,7 @@ class ToolRegistry:
                 return category
         return "unknown"
 
-    def get_all_function_tools(self) -> List[FunctionTool]:
+    def get_all_function_tools(self) -> list[FunctionTool]:
         """获取所有函数工具"""
         function_tools = []
         for tool in self.get_enabled_tools():

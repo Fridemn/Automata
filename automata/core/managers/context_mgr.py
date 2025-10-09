@@ -1,5 +1,6 @@
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from typing import Any
 
 from ..db import DatabaseManager
 from .conversation_mgr import ConversationManager
@@ -9,7 +10,7 @@ from .message_history_mgr import MessageHistoryManager
 class ContextManager:
     """上下文管理器 - 整合会话、对话和消息历史管理"""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         self.db = DatabaseManager(db_path)
         self.conversation_mgr = ConversationManager(self.db)
         self.message_mgr = MessageHistoryManager(self.db, engine=self.db.engine)
@@ -23,7 +24,7 @@ class ContextManager:
         session_id: str,
         platform_id: str,
         user_id: str,
-        persona_id: Optional[str] = None,
+        persona_id: str | None = None,
     ) -> str:
         """初始化会话，返回当前对话ID"""
         return await self.conversation_mgr.get_or_create_conversation(
@@ -39,15 +40,21 @@ class ContextManager:
         platform_id: str,
         user_id: str,
         content: str,
-        sender_id: Optional[str] = None,
-        sender_name: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """添加用户消息到当前对话"""
-        conversation_id = await self.conversation_mgr.get_current_conversation_id(session_id)
+        conversation_id = await self.conversation_mgr.get_current_conversation_id(
+            session_id,
+        )
         if not conversation_id:
             # 如果没有当前对话，创建一个
-            conversation_id = await self.initialize_session(session_id, platform_id, user_id)
+            conversation_id = await self.initialize_session(
+                session_id,
+                platform_id,
+                user_id,
+            )
 
         await self.message_mgr.add_message(
             conversation_id=conversation_id,
@@ -69,13 +76,19 @@ class ContextManager:
         platform_id: str,
         user_id: str,
         content: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """添加助手消息到当前对话"""
-        conversation_id = await self.conversation_mgr.get_current_conversation_id(session_id)
+        conversation_id = await self.conversation_mgr.get_current_conversation_id(
+            session_id,
+        )
         if not conversation_id:
             # 如果没有当前对话，创建一个
-            conversation_id = await self.initialize_session(session_id, platform_id, user_id)
+            conversation_id = await self.initialize_session(
+                session_id,
+                platform_id,
+                user_id,
+            )
 
         await self.message_mgr.add_message(
             conversation_id=conversation_id,
@@ -94,9 +107,11 @@ class ContextManager:
         session_id: str,
         max_messages: int = 20,
         include_system: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """获取对话上下文，用于LLM调用"""
-        conversation_id = await self.conversation_mgr.get_current_conversation_id(session_id)
+        conversation_id = await self.conversation_mgr.get_current_conversation_id(
+            session_id,
+        )
         if not conversation_id:
             return []
 
@@ -124,15 +139,18 @@ class ContextManager:
 
     async def switch_conversation(self, session_id: str, conversation_id: str) -> bool:
         """切换到指定的对话"""
-        return await self.conversation_mgr.switch_conversation(session_id, conversation_id)
+        return await self.conversation_mgr.switch_conversation(
+            session_id,
+            conversation_id,
+        )
 
     async def create_new_conversation(
         self,
         session_id: str,
         platform_id: str,
         user_id: str,
-        title: Optional[str] = None,
-        persona_id: Optional[str] = None,
+        title: str | None = None,
+        persona_id: str | None = None,
     ) -> str:
         """创建新对话"""
         return await self.conversation_mgr.new_conversation(
@@ -147,7 +165,7 @@ class ContextManager:
         self,
         session_id: str,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """获取会话的对话列表"""
         conversations = await self.conversation_mgr.get_conversations(
             session_id=session_id,
@@ -157,15 +175,19 @@ class ContextManager:
         result = []
         for conv in conversations:
             # 计算消息数量
-            message_count = await self.message_mgr.get_message_count(conv.conversation_id)
+            message_count = await self.message_mgr.get_message_count(
+                conv.conversation_id,
+            )
 
-            result.append({
-                "conversation_id": conv.conversation_id,
-                "title": conv.title or f"对话 {conv.conversation_id[:8]}",
-                "created_at": conv.created_at.isoformat(),
-                "updated_at": conv.updated_at.isoformat(),
-                "message_count": message_count,
-            })
+            result.append(
+                {
+                    "conversation_id": conv.conversation_id,
+                    "title": conv.title or f"对话 {conv.conversation_id[:8]}",
+                    "created_at": conv.created_at.isoformat(),
+                    "updated_at": conv.updated_at.isoformat(),
+                    "message_count": message_count,
+                },
+            )
 
         return result
 
@@ -174,11 +196,11 @@ class ContextManager:
         await self.message_mgr.delete_messages_for_conversation(conversation_id)
         return await self.conversation_mgr.delete_conversation(conversation_id)
 
-    async def export_conversation(self, conversation_id: str) -> Dict[str, Any]:
+    async def export_conversation(self, conversation_id: str) -> dict[str, Any]:
         """导出对话历史"""
         return await self.message_mgr.export_conversation(conversation_id)
 
-    async def cleanup_old_data(self, days: int = 30) -> Dict[str, int]:
+    async def cleanup_old_data(self, days: int = 30) -> dict[str, int]:
         """清理旧数据"""
         deleted_messages = await self.message_mgr.delete_old_messages(days)
         # 这里可以添加更多清理逻辑
@@ -188,7 +210,7 @@ class ContextManager:
             "deleted_conversations": 0,  # 暂时不实现
         }
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取统计信息"""
         # 这里可以实现更详细的统计
         return {
@@ -201,6 +223,10 @@ class ContextManager:
         """关闭上下文管理器"""
         await self.db.close()
 
-    async def get_conversation_history(self, conversation_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_conversation_history(
+        self,
+        conversation_id: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
         """获取对话的历史消息"""
         return await self.message_mgr.get_conversation_history(conversation_id, limit)

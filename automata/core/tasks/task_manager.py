@@ -5,26 +5,33 @@
 参考OpenAI Agents SDK的Tracing机制
 """
 
+from __future__ import annotations
+
 import asyncio
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Callable, Awaitable
-from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Callable
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db.database import DatabaseManager
-from ..db.models import Task, TaskData
+from automata.core.db.models import Task, TaskData
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable
+
+    from automata.core.db.database import DatabaseManager
 
 
 @dataclass
 class TaskResult:
     """任务结果"""
+
     success: bool
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class TaskManager:
@@ -32,7 +39,7 @@ class TaskManager:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
-        self._running_tasks: Dict[str, asyncio.Task] = {}
+        self._running_tasks: dict[str, asyncio.Task] = {}
         self._executor = ThreadPoolExecutor(max_workers=4)
 
     async def create_task(
@@ -41,8 +48,8 @@ class TaskManager:
         tool_name: str,
         task_type: str,
         description: str = "",
-        parameters: Optional[Dict[str, Any]] = None,
-        priority: int = 4
+        parameters: dict[str, Any] | None = None,
+        priority: int = 4,
     ) -> str:
         """创建异步任务"""
         task_id = str(uuid.uuid4())
@@ -67,7 +74,7 @@ class TaskManager:
     async def start_task(
         self,
         task_id: str,
-        task_func: Callable[[], Awaitable[TaskResult]]
+        task_func: Callable[[], Awaitable[TaskResult]],
     ) -> None:
         """启动任务"""
         # 更新状态为running
@@ -90,7 +97,7 @@ class TaskManager:
         task = asyncio.create_task(_run_task())
         self._running_tasks[task_id] = task
 
-    async def get_task_status(self, task_id: str) -> Optional[TaskData]:
+    async def get_task_status(self, task_id: str) -> TaskData | None:
         """获取任务状态"""
         async with AsyncSession(self.db.engine) as session:
             result = await session.execute(select(Task).where(Task.task_id == task_id))
@@ -115,10 +122,10 @@ class TaskManager:
 
     async def list_tasks(
         self,
-        session_id: Optional[str] = None,
-        status: Optional[str] = None,
-        limit: int = 50
-    ) -> List[TaskData]:
+        session_id: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+    ) -> list[TaskData]:
         """列出任务"""
         async with AsyncSession(self.db.engine) as session:
             query = select(Task)
@@ -127,7 +134,9 @@ class TaskManager:
             if status:
                 query = query.where(Task.status == status)
 
-            query = query.order_by(Task.priority.asc(), Task.created_at.desc()).limit(limit)
+            query = query.order_by(Task.priority.asc(), Task.created_at.desc()).limit(
+                limit,
+            )
             tasks = await session.execute(query)
             task_list = tasks.scalars().all()
 
@@ -159,7 +168,9 @@ class TaskManager:
 
             # 更新数据库状态
             async with AsyncSession(self.db.engine) as session:
-                result = await session.execute(select(Task).where(Task.task_id == task_id))
+                result = await session.execute(
+                    select(Task).where(Task.task_id == task_id),
+                )
                 db_task = result.scalar_one_or_none()
                 if db_task:
                     db_task.status = "failed"
@@ -174,7 +185,9 @@ class TaskManager:
     async def _complete_task(self, task_id: str, result: TaskResult) -> None:
         """完成任务"""
         async with AsyncSession(self.db.engine) as session:
-            result_query = await session.execute(select(Task).where(Task.task_id == task_id))
+            result_query = await session.execute(
+                select(Task).where(Task.task_id == task_id),
+            )
             task = result_query.scalar_one_or_none()
             if task:
                 task.status = "completed" if result.success else "failed"
@@ -214,7 +227,7 @@ class TaskManager:
             result = await session.execute(
                 select(Task)
                 .where(Task.status.in_(["completed", "failed"]))
-                .where(Task.completed_at < cutoff_date)
+                .where(Task.completed_at < cutoff_date),
             )
             old_tasks = result.scalars().all()
 

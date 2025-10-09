@@ -1,9 +1,10 @@
-import uuid
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from __future__ import annotations
 
-from ..db import DatabaseManager
-from ..db.models import Conversation
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ..db import DatabaseManager
+    from ..db.models import Conversation
 
 
 class ConversationManager:
@@ -11,15 +12,15 @@ class ConversationManager:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
-        self.session_conversations: Dict[str, str] = {}  # session_id -> conversation_id
+        self.session_conversations: dict[str, str] = {}  # session_id -> conversation_id
 
     async def new_conversation(
         self,
         session_id: str,
         platform_id: str,
         user_id: str,
-        title: Optional[str] = None,
-        persona_id: Optional[str] = None,
+        title: str | None = None,
+        persona_id: str | None = None,
     ) -> str:
         """创建新对话"""
         conversation = await self.db.create_conversation(
@@ -41,7 +42,7 @@ class ConversationManager:
         self.session_conversations[session_id] = conversation.conversation_id
         return conversation.conversation_id
 
-    async def get_current_conversation_id(self, session_id: str) -> Optional[str]:
+    async def get_current_conversation_id(self, session_id: str) -> str | None:
         """获取会话的当前对话ID"""
         # 先从内存缓存中查找
         if session_id in self.session_conversations:
@@ -79,17 +80,17 @@ class ConversationManager:
         """删除对话"""
         return await self.db.delete_conversation(conversation_id)
 
-    async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
+    async def get_conversation(self, conversation_id: str) -> Conversation | None:
         """获取对话"""
         return await self.db.get_conversation_by_id(conversation_id)
 
     async def get_conversations(
         self,
-        session_id: Optional[str] = None,
-        platform_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        session_id: str | None = None,
+        platform_id: str | None = None,
+        user_id: str | None = None,
         limit: int = 20,
-    ) -> List[Conversation]:
+    ) -> list[Conversation]:
         """获取对话列表"""
         return await self.db.get_conversations(
             session_id=session_id,
@@ -101,8 +102,8 @@ class ConversationManager:
     async def update_conversation_content(
         self,
         conversation_id: str,
-        content: List[Dict[str, Any]],
-        title: Optional[str] = None,
+        content: list[dict[str, Any]],
+        title: str | None = None,
     ) -> bool:
         """更新对话内容"""
         conversation = await self.db.update_conversation(
@@ -117,8 +118,8 @@ class ConversationManager:
         session_id: str,
         platform_id: str,
         user_id: str,
-        title: Optional[str] = None,
-        persona_id: Optional[str] = None,
+        title: str | None = None,
+        persona_id: str | None = None,
     ) -> str:
         """获取或创建对话"""
         current_conversation_id = await self.get_current_conversation_id(session_id)

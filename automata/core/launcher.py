@@ -3,37 +3,44 @@
 Automata 启动器，负责初始化和启动核心组件和仪表板服务器。
 """
 
-import asyncio
+from __future__ import annotations
+
 import argparse
+import asyncio
 import os
 import sys
-from typing import Optional
+
 from automata.core.utils.path_utils import get_project_root
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, get_project_root())
 
-from automata.core.server.web_server import AutomataDashboard
-from automata.core.config.config import get_openai_config, get_agent_config, get_extensions_config, get_mcp_config
-from automata.core.tool import get_tool_manager, initialize_tools
-from automata.core.tasks.task_manager import TaskManager
-from automata.core.db.database import DatabaseManager
-from automata.core.initialization_manager import InitializationManager
-from automata.core.dependency_container import DependencyContainer
-from agents import Agent, Runner, RunConfig, SQLiteSession
+from agents import Agent, RunConfig, SQLiteSession
 from agents.models.multi_provider import OpenAIProvider
-from agents.mcp import MCPServerStdio
+
+from automata.core.config.config import (
+    get_agent_config,
+    get_extensions_config,
+    get_mcp_config,
+    get_openai_config,
+)
+from automata.core.db.database import DatabaseManager
+from automata.core.dependency_container import DependencyContainer
+from automata.core.initialization_manager import InitializationManager
+from automata.core.server.web_server import AutomataDashboard
+from automata.core.tasks.task_manager import TaskManager
+from automata.core.tool import get_tool_manager, initialize_tools
 
 
 class AutomataLauncher:
     """Automata 启动器"""
 
-    def __init__(self, webui_dir: Optional[str] = None):
+    def __init__(self, webui_dir: str | None = None):
         self.webui_dir = webui_dir
-        self.dashboard_server: Optional[AutomataDashboard] = None
-        self.agent: Optional[Agent] = None
-        self.run_config: Optional[RunConfig] = None
-        self.session: Optional[SQLiteSession] = None
+        self.dashboard_server: AutomataDashboard | None = None
+        self.agent: Agent | None = None
+        self.run_config: RunConfig | None = None
+        self.session: SQLiteSession | None = None
         self.mcp_servers: list = []
 
         # 初始化管理器和依赖容器
@@ -56,6 +63,7 @@ class AutomataLauncher:
         async def create_task_manager():
             db_manager = self.container.resolve(DatabaseManager)
             return TaskManager(db_manager)
+
         self.container.register_factory("TaskManager", create_task_manager)
 
         # 注册模型提供者（依赖配置）
@@ -67,35 +75,33 @@ class AutomataLauncher:
             return OpenAIProvider(
                 api_key=api_key,
                 base_url=api_base_url,
-                use_responses=False
+                use_responses=False,
             )
+
         self.container.register_factory("OpenAIProvider", create_model_provider)
 
     async def initialize(self):
         """初始化Automata"""
-        print("🔧 Initializing Automata...")
 
         # 注册初始化器
         self._register_initializers()
 
         # 执行初始化
-        results = await self.init_manager.initialize_all(parallel=True)
+        await self.init_manager.initialize_all(parallel=True)
 
         # 检查结果
         summary = self.init_manager.get_results_summary()
-        print(f"📊 Initialization Summary: {summary['success']}/{summary['total']} successful")
 
-        if summary['failed'] > 0:
-            print("❌ Failed initializations:")
-            for name, detail in summary['details'].items():
-                if detail['status'] == 'failed':
-                    print(f"  - {name}: {detail['error']}")
+        if summary["failed"] > 0:
+            for detail in summary["details"].values():
+                if detail["status"] == "failed":
+                    pass
 
         success = self.init_manager.is_successful()
         if success:
-            print("✅ Automata initialized successfully")
+            pass
         else:
-            print("❌ Automata initialization failed")
+            pass
 
         return success
 
@@ -108,16 +114,32 @@ class AutomataLauncher:
         self.init_manager.register_initializer("database", self._init_database)
 
         # 任务管理器（依赖数据库）
-        self.init_manager.register_initializer("task_manager", self._init_task_manager, ["database"])
+        self.init_manager.register_initializer(
+            "task_manager",
+            self._init_task_manager,
+            ["database"],
+        )
 
         # 模型提供者（依赖配置）
-        self.init_manager.register_initializer("model_provider", self._init_model_provider, ["config"])
+        self.init_manager.register_initializer(
+            "model_provider",
+            self._init_model_provider,
+            ["config"],
+        )
 
         # 工具系统（依赖任务管理器）
-        self.init_manager.register_initializer("tools", self._init_tools, ["task_manager"])
+        self.init_manager.register_initializer(
+            "tools",
+            self._init_tools,
+            ["task_manager"],
+        )
 
         # Agent创建（依赖配置、模型提供者、工具）
-        self.init_manager.register_initializer("agent", self._init_agent, ["config", "model_provider", "tools"])
+        self.init_manager.register_initializer(
+            "agent",
+            self._init_agent,
+            ["config", "model_provider", "tools"],
+        )
 
         # 会话设置（依赖Agent）
         self.init_manager.register_initializer("session", self._init_session, ["agent"])
@@ -129,7 +151,8 @@ class AutomataLauncher:
 
         api_key = self.openai_config.get("api_key")
         if not api_key:
-            raise ValueError("Please set openai.api_key in data/config.json")
+            msg = "Please set openai.api_key in data/config.json"
+            raise ValueError(msg)
 
         return {"openai_config": self.openai_config, "agent_config": self.agent_config}
 
@@ -164,18 +187,21 @@ class AutomataLauncher:
 
         tool_config = {
             "builtin": {
-                "enabled": agent_config.get("enable_tools", True)
+                "enabled": agent_config.get("enable_tools", True),
             },
             "extensions": {
-                "enabled": extensions_config.get("enabled", True)
+                "enabled": extensions_config.get("enabled", True),
             },
             "mcp": {
                 "enabled": mcp_config.get("enabled", False),
                 "filesystem": {
                     "enabled": mcp_config.get("filesystem", {}).get("enabled", True),
-                    "root_path": mcp_config.get("filesystem", {}).get("root_path", os.getcwd())
-                }
-            }
+                    "root_path": mcp_config.get("filesystem", {}).get(
+                        "root_path",
+                        os.getcwd(),
+                    ),
+                },
+            },
         }
 
         await initialize_tools(tool_config, task_manager)
@@ -198,7 +224,7 @@ class AutomataLauncher:
             instructions=agent_config.get("instructions"),
             model=openai_config.get("model"),
             tools=tools,
-            mcp_servers=mcp_servers
+            mcp_servers=mcp_servers,
         )
 
         # 创建运行配置
@@ -218,12 +244,11 @@ class AutomataLauncher:
             # 清理工具管理器
             tool_mgr = get_tool_manager()
             await tool_mgr.cleanup()
-        except Exception as e:
-            print(f"Warning: Error during cleanup: {e}")
+        except Exception:
+            pass
 
     async def run_web_mode(self):
         """运行Web模式"""
-        print("🌐 Starting Web mode...")
 
         # 初始化仪表板服务器
         self.dashboard_server = AutomataDashboard(self.webui_dir)
@@ -250,14 +275,13 @@ async def main():
         "--webui-dir",
         type=str,
         help="指定WebUI静态文件目录路径",
-        default=None
+        default=None,
     )
 
     args = parser.parse_args()
 
     # 检查环境
     if not (sys.version_info.major == 3 and sys.version_info.minor >= 10):
-        print("请使用 Python3.10+ 运行本项目。")
         return
 
     # 创建启动器
@@ -266,9 +290,8 @@ async def main():
     try:
         await launcher.start()
     except KeyboardInterrupt:
-        print("\n👋 Shutting down Automata...")
-    except Exception as e:
-        print(f"❌ Fatal error: {e}")
+        pass
+    except Exception:
         raise
 
 

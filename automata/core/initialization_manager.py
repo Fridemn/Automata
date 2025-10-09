@@ -4,10 +4,12 @@
 负责协调和管理所有组件的初始化过程
 """
 
+from __future__ import annotations
+
 import asyncio
-from typing import Dict, List, Callable, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Callable
 
 
 class InitializationStatus(Enum):
@@ -23,7 +25,7 @@ class InitializationResult:
     name: str
     status: InitializationStatus
     result: Any = None
-    error: Optional[Exception] = None
+    error: Exception | None = None
     duration: float = 0.0
 
 
@@ -31,16 +33,16 @@ class InitializationManager:
     """初始化管理器 - 协调组件初始化"""
 
     def __init__(self):
-        self.initializers: Dict[str, Callable] = {}
-        self.dependencies: Dict[str, List[str]] = {}
-        self.results: Dict[str, InitializationResult] = {}
-        self.context: Dict[str, Any] = {}
+        self.initializers: dict[str, Callable] = {}
+        self.dependencies: dict[str, list[str]] = {}
+        self.results: dict[str, InitializationResult] = {}
+        self.context: dict[str, Any] = {}
 
     def register_initializer(
         self,
         name: str,
         initializer: Callable,
-        dependencies: Optional[List[str]] = None
+        dependencies: list[str] | None = None,
     ) -> None:
         """
         注册初始化器
@@ -68,7 +70,7 @@ class InitializationManager:
             return InitializationResult(
                 name,
                 InitializationStatus.FAILED,
-                error=ValueError(f"初始化器 '{name}' 未注册")
+                error=ValueError(f"初始化器 '{name}' 未注册"),
             )
 
         # 检查依赖
@@ -77,13 +79,13 @@ class InitializationManager:
                 return InitializationResult(
                     name,
                     InitializationStatus.FAILED,
-                    error=ValueError(f"依赖 '{dep}' 未注册")
+                    error=ValueError(f"依赖 '{dep}' 未注册"),
                 )
             if self.results[dep].status != InitializationStatus.SUCCESS:
                 return InitializationResult(
                     name,
                     InitializationStatus.SKIPPED,
-                    error=ValueError(f"依赖 '{dep}' 初始化失败")
+                    error=ValueError(f"依赖 '{dep}' 初始化失败"),
                 )
 
         # 执行初始化
@@ -98,7 +100,7 @@ class InitializationManager:
                 name,
                 InitializationStatus.SUCCESS,
                 result=result,
-                duration=duration
+                duration=duration,
             )
             self.results[name] = init_result
             return init_result
@@ -109,12 +111,12 @@ class InitializationManager:
                 name,
                 InitializationStatus.FAILED,
                 error=e,
-                duration=duration
+                duration=duration,
             )
             self.results[name] = init_result
             return init_result
 
-    async def initialize_all(self, parallel: bool = True) -> List[InitializationResult]:
+    async def initialize_all(self, parallel: bool = True) -> list[InitializationResult]:
         """
         初始化所有组件
 
@@ -126,10 +128,9 @@ class InitializationManager:
         """
         if parallel:
             return await self._initialize_parallel()
-        else:
-            return await self._initialize_sequential()
+        return await self._initialize_sequential()
 
-    async def _initialize_parallel(self) -> List[InitializationResult]:
+    async def _initialize_parallel(self) -> list[InitializationResult]:
         """并行初始化（考虑依赖关系）"""
         results = []
 
@@ -137,11 +138,18 @@ class InitializationManager:
         no_deps = [name for name, deps in self.dependencies.items() if not deps]
         if no_deps:
             parallel_tasks = [self.initialize_component(name) for name in no_deps]
-            batch_results = await asyncio.gather(*parallel_tasks, return_exceptions=True)
-            results.extend([r for r in batch_results if isinstance(r, InitializationResult)])
+            batch_results = await asyncio.gather(
+                *parallel_tasks,
+                return_exceptions=True,
+            )
+            results.extend(
+                [r for r in batch_results if isinstance(r, InitializationResult)],
+            )
 
         # 后续遍：初始化有依赖的组件
-        remaining = [name for name in self.initializers.keys() if name not in [r.name for r in results]]
+        remaining = [
+            name for name in self.initializers if name not in [r.name for r in results]
+        ]
         max_iterations = len(self.initializers)  # 防止无限循环
 
         for _ in range(max_iterations):
@@ -152,7 +160,11 @@ class InitializationManager:
             ready = []
             for name in remaining:
                 deps_satisfied = all(
-                    self.results.get(dep, InitializationResult(dep, InitializationStatus.PENDING)).status == InitializationStatus.SUCCESS
+                    self.results.get(
+                        dep,
+                        InitializationResult(dep, InitializationStatus.PENDING),
+                    ).status
+                    == InitializationStatus.SUCCESS
                     for dep in self.dependencies[name]
                 )
                 if deps_satisfied:
@@ -161,37 +173,50 @@ class InitializationManager:
             if not ready:
                 # 没有可初始化的组件，可能存在循环依赖
                 for name in remaining:
-                    results.append(InitializationResult(
-                        name,
-                        InitializationStatus.FAILED,
-                        error=ValueError("可能存在循环依赖或依赖未满足")
-                    ))
+                    results.append(
+                        InitializationResult(
+                            name,
+                            InitializationStatus.FAILED,
+                            error=ValueError("可能存在循环依赖或依赖未满足"),
+                        ),
+                    )
                 break
 
             # 并行初始化准备好的组件
             parallel_tasks = [self.initialize_component(name) for name in ready]
-            batch_results = await asyncio.gather(*parallel_tasks, return_exceptions=True)
-            results.extend([r for r in batch_results if isinstance(r, InitializationResult)])
+            batch_results = await asyncio.gather(
+                *parallel_tasks,
+                return_exceptions=True,
+            )
+            results.extend(
+                [r for r in batch_results if isinstance(r, InitializationResult)],
+            )
 
             # 更新剩余组件
             remaining = [name for name in remaining if name not in ready]
 
         return results
 
-    async def _initialize_sequential(self) -> List[InitializationResult]:
+    async def _initialize_sequential(self) -> list[InitializationResult]:
         """顺序初始化"""
         results = []
-        for name in self.initializers.keys():
+        for name in self.initializers:
             result = await self.initialize_component(name)
             results.append(result)
         return results
 
-    def get_results_summary(self) -> Dict[str, Any]:
+    def get_results_summary(self) -> dict[str, Any]:
         """获取初始化结果摘要"""
         total = len(self.results)
-        success = sum(1 for r in self.results.values() if r.status == InitializationStatus.SUCCESS)
-        failed = sum(1 for r in self.results.values() if r.status == InitializationStatus.FAILED)
-        skipped = sum(1 for r in self.results.values() if r.status == InitializationStatus.SKIPPED)
+        success = sum(
+            1 for r in self.results.values() if r.status == InitializationStatus.SUCCESS
+        )
+        failed = sum(
+            1 for r in self.results.values() if r.status == InitializationStatus.FAILED
+        )
+        skipped = sum(
+            1 for r in self.results.values() if r.status == InitializationStatus.SKIPPED
+        )
 
         return {
             "total": total,
@@ -199,10 +224,18 @@ class InitializationManager:
             "failed": failed,
             "skipped": skipped,
             "success_rate": success / total if total > 0 else 0,
-            "details": {name: {"status": r.status.value, "duration": r.duration, "error": str(r.error) if r.error else None}
-                       for name, r in self.results.items()}
+            "details": {
+                name: {
+                    "status": r.status.value,
+                    "duration": r.duration,
+                    "error": str(r.error) if r.error else None,
+                }
+                for name, r in self.results.items()
+            },
         }
 
     def is_successful(self) -> bool:
         """检查是否所有初始化都成功"""
-        return all(r.status == InitializationStatus.SUCCESS for r in self.results.values())
+        return all(
+            r.status == InitializationStatus.SUCCESS for r in self.results.values()
+        )

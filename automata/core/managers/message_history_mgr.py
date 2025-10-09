@@ -1,9 +1,13 @@
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone, timedelta
-import asyncio
+from __future__ import annotations
 
-from ..db import DatabaseManager
+import asyncio
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
+
 from agents.extensions.memory import SQLAlchemySession
+
+if TYPE_CHECKING:
+    from ..db import DatabaseManager
 
 
 class MessageHistoryManager:
@@ -21,7 +25,7 @@ class MessageHistoryManager:
                 SQLAlchemySession,
                 f"automata_{conversation_id}",
                 engine=self.engine,
-                create_tables=True
+                create_tables=True,
             )
         return self.sessions.get(conversation_id)
 
@@ -33,10 +37,10 @@ class MessageHistoryManager:
         user_id: str,
         role: str,
         content: str,
-        sender_id: Optional[str] = None,
-        sender_name: Optional[str] = None,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
         content_type: str = "text",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """添加消息到历史记录"""
         # 如果有engine，使用SDK的session
@@ -48,16 +52,15 @@ class MessageHistoryManager:
                     item.update(metadata)
                 await session.add_items([item])
                 return
-        
+
         # 如果没有engine，不做任何事
-        pass
 
     async def get_conversation_history(
         self,
         conversation_id: str,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """获取对话的历史消息"""
         # 如果有engine，使用SDK的session
         if self.engine:
@@ -74,20 +77,20 @@ class MessageHistoryManager:
                         "content": item.get("content", ""),
                         "content_type": "text",
                         "message_metadata": item,
-                        "created_at": datetime.now(timezone.utc)
+                        "created_at": datetime.now(timezone.utc),
                     }
                     messages.append(message)
                 return messages
-        
+
         # 如果没有engine，返回空列表
         return []
 
     async def get_recent_messages(
         self,
         session_id: str,
-        platform_id: Optional[str] = None,
+        platform_id: str | None = None,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """获取会话的最近消息"""
         # 这里需要实现跨对话的消息查询逻辑
         # 暂时返回空列表，后面可以扩展
@@ -96,10 +99,10 @@ class MessageHistoryManager:
     async def search_messages(
         self,
         query: str,
-        session_id: Optional[str] = None,
-        platform_id: Optional[str] = None,
+        session_id: str | None = None,
+        platform_id: str | None = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """搜索消息内容"""
         # 这里需要实现全文搜索逻辑
         # 暂时返回空列表，后面可以扩展
@@ -111,11 +114,11 @@ class MessageHistoryManager:
 
     async def get_message_stats(
         self,
-        session_id: Optional[str] = None,
-        platform_id: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
+        session_id: str | None = None,
+        platform_id: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, Any]:
         """获取消息统计信息"""
         # 这里可以实现统计逻辑
         return {
@@ -125,14 +128,14 @@ class MessageHistoryManager:
             "date_range": {
                 "start": start_date.isoformat() if start_date else None,
                 "end": end_date.isoformat() if end_date else None,
-            }
+            },
         }
 
     async def export_conversation(
         self,
         conversation_id: str,
         format: str = "json",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """导出对话历史"""
         messages = await self.get_conversation_history(conversation_id, limit=1000)
 
@@ -151,7 +154,7 @@ class MessageHistoryManager:
                 ],
                 "exported_at": datetime.now(timezone.utc).isoformat(),
             }
-        elif format == "text":
+        if format == "text":
             text_output = f"Conversation: {conversation_id}\n\n"
             for msg in messages:
                 text_output += f"[{msg['created_at'].strftime('%Y-%m-%d %H:%M:%S')}] {msg['role']}: {msg['content']}\n"
@@ -167,8 +170,7 @@ class MessageHistoryManager:
                 try:
                     items = await session.get_items()
                     return len(items)
-                except Exception as e:
-                    print(f"Error getting message count for conversation {conversation_id}: {e}")
+                except Exception:
                     return 0
         return 0
 
@@ -180,7 +182,6 @@ class MessageHistoryManager:
                 await session.clear_session()
                 del self.sessions[conversation_id]
                 return True
-            except Exception as e:
-                print(f"Error deleting messages for conversation {conversation_id}: {e}")
+            except Exception:
                 return False
         return True

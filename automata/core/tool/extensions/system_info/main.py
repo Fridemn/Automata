@@ -5,7 +5,9 @@
 """
 
 import platform
-from agents import function_tool, FunctionTool
+
+from agents import FunctionTool, function_tool
+
 from automata.core.tool.base import BaseTool, ToolConfig
 
 
@@ -35,6 +37,7 @@ def get_system_info() -> str:
         # 尝试获取内存和CPU信息
         try:
             import psutil  # type: ignore
+
             # 获取内存信息
             memory = psutil.virtual_memory()
             memory_info = f"总内存: {memory.total // (1024**3)}GB, 可用: {memory.available // (1024**3)}GB"
@@ -48,7 +51,7 @@ def get_system_info() -> str:
 
         return f"系统信息:\n- 操作系统: {system} {version}\n- 架构: {architecture}\n- {cpu_info}\n- {memory_info}"
     except Exception as e:
-        return f"获取系统信息失败: {str(e)}"
+        return f"获取系统信息失败: {e!s}"
 
 
 def create_tool(name: str = "system_info", task_manager=None) -> SystemInfoTool:
@@ -56,7 +59,7 @@ def create_tool(name: str = "system_info", task_manager=None) -> SystemInfoTool:
     config = ToolConfig(
         name=name,
         description="System information tools",
-        config={}
+        config={},
     )
 
     tool = SystemInfoTool(config, task_manager)

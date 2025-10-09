@@ -4,8 +4,9 @@ example_tool 扩展
 An example tool extension
 """
 
-from automata.core.tool.base import BaseTool, ToolConfig
 from agents import function_tool
+
+from automata.core.tool.base import BaseTool, ToolConfig
 
 
 class ExampleToolTool(BaseTool):
@@ -37,6 +38,6 @@ def create_tool() -> ExampleToolTool:
     config = ToolConfig(
         name="example_tool",
         description="An example tool extension",
-        enabled=True
+        enabled=True,
     )
     return ExampleToolTool(config)

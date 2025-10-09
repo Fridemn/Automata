@@ -4,19 +4,24 @@
 管理组件的创建和依赖关系
 """
 
-from typing import Dict, Type, Any, Callable, Optional
 import inspect
+from typing import Any, Callable
 
 
 class DependencyContainer:
     """依赖注入容器"""
 
     def __init__(self):
-        self._services: Dict[str, Any] = {}
-        self._factories: Dict[str, Callable] = {}
-        self._singletons: Dict[str, Any] = {}
+        self._services: dict[str, Any] = {}
+        self._factories: dict[str, Callable] = {}
+        self._singletons: dict[str, Any] = {}
 
-    def register(self, service_type: Type, implementation: Any = None, singleton: bool = True):
+    def register(
+        self,
+        service_type: type,
+        implementation: Any = None,
+        singleton: bool = True,
+    ):
         """
         注册服务
 
@@ -50,12 +55,12 @@ class DependencyContainer:
         else:
             self._factories[name] = factory
 
-    def register_instance(self, service_type: Type, instance: Any):
+    def register_instance(self, service_type: type, instance: Any):
         """注册实例"""
         name = service_type.__name__
         self._services[name] = instance
 
-    def resolve(self, service_type: Type) -> Any:
+    def resolve(self, service_type: type) -> Any:
         """
         解析服务
 
@@ -65,10 +70,7 @@ class DependencyContainer:
         Returns:
             服务实例
         """
-        if isinstance(service_type, str):
-            name = service_type
-        else:
-            name = service_type.__name__
+        name = service_type if isinstance(service_type, str) else service_type.__name__
 
         # 首先检查已创建的实例
         if name in self._services:
@@ -78,12 +80,15 @@ class DependencyContainer:
         if name in self._singletons:
             if self._singletons[name] is None:
                 # 创建单例实例
-                if hasattr(service_type, '__init__') and not isinstance(service_type, str):
+                if hasattr(service_type, "__init__") and not isinstance(
+                    service_type,
+                    str,
+                ):
                     # 解析构造函数参数
                     sig = inspect.signature(service_type.__init__)
                     kwargs = {}
                     for param_name, param in sig.parameters.items():
-                        if param_name != 'self':
+                        if param_name != "self":
                             try:
                                 kwargs[param_name] = self.resolve(param.annotation)
                             except Exception:
@@ -91,16 +96,19 @@ class DependencyContainer:
                                 if param.default != inspect.Parameter.empty:
                                     kwargs[param_name] = param.default
                                 else:
-                                    raise ValueError(f"Cannot resolve dependency {param_name} for {name}")
+                                    msg = f"Cannot resolve dependency {param_name} for {name}"
+                                    raise ValueError(
+                                        msg,
+                                    )
 
                     self._singletons[name] = service_type(**kwargs)
+                # 对于工厂函数，直接调用
+                elif name in self._factories:
+                    factory = self._factories[name]
+                    self._singletons[name] = factory()
                 else:
-                    # 对于工厂函数，直接调用
-                    if name in self._factories:
-                        factory = self._factories[name]
-                        self._singletons[name] = factory()
-                    else:
-                        raise ValueError(f"No factory registered for {name}")
+                    msg = f"No factory registered for {name}"
+                    raise ValueError(msg)
 
             return self._singletons[name]
 
@@ -109,12 +117,17 @@ class DependencyContainer:
             factory = self._factories[name]
             return factory()
 
-        raise ValueError(f"Service {name} not registered")
+        msg = f"Service {name} not registered"
+        raise ValueError(msg)
 
-    def has_service(self, service_type: Type) -> bool:
+    def has_service(self, service_type: type) -> bool:
         """检查服务是否已注册"""
         name = service_type.__name__
-        return name in self._services or name in self._singletons or name in self._factories
+        return (
+            name in self._services
+            or name in self._singletons
+            or name in self._factories
+        )
 
     def clear(self):
         """清除所有服务"""

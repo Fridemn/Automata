@@ -5,7 +5,9 @@
 """
 
 import datetime
-from agents import function_tool, FunctionTool
+
+from agents import FunctionTool, function_tool
+
 from automata.core.tool.base import BaseTool, ToolConfig
 
 
@@ -36,7 +38,7 @@ def create_tool(name: str = "time", task_manager=None) -> TimeTool:
     config = ToolConfig(
         name=name,
         description="Time utility tools",
-        config={}
+        config={},
     )
 
     tool = TimeTool(config, task_manager)

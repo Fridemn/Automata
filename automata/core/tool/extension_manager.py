@@ -4,12 +4,16 @@
 负责扩展的加载和管理
 """
 
-from typing import Dict, List, Any, Optional, TYPE_CHECKING
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from .extensions import get_extension_loader
-from .base import BaseTool
 
 if TYPE_CHECKING:
-    from ..tasks.task_manager import TaskManager
+    from automata.core.tasks.task_manager import TaskManager
+
+    from .base import BaseTool
 
 
 class ExtensionManager:
@@ -17,9 +21,12 @@ class ExtensionManager:
 
     def __init__(self):
         self.extension_loader = get_extension_loader()
-        self.loaded_tools: Dict[str, BaseTool] = {}
+        self.loaded_tools: dict[str, BaseTool] = {}
 
-    def load_all_extensions(self, task_manager: Optional['TaskManager'] = None) -> List[BaseTool]:
+    def load_all_extensions(
+        self,
+        task_manager: TaskManager | None = None,
+    ) -> list[BaseTool]:
         """加载所有扩展"""
         extensions = self.extension_loader.load_all_extensions(task_manager)
         for tool in extensions:
@@ -40,7 +47,7 @@ class ExtensionManager:
             return True
         return self.extension_loader.disable_extension(name)
 
-    def get_extension_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_extension_status(self, name: str) -> dict[str, Any] | None:
         """获取扩展状态"""
         if name in self.loaded_tools:
             tool = self.loaded_tools[name]
@@ -51,10 +58,10 @@ class ExtensionManager:
                 "enabled": tool.enabled,
                 "active": tool.active,
                 "category": ext_info.category if ext_info else "unknown",
-                "version": ext_info.version if ext_info else "unknown"
+                "version": ext_info.version if ext_info else "unknown",
             }
         return self.extension_loader.get_extension_status(name)
 
-    def get_loaded_tools(self) -> List[BaseTool]:
+    def get_loaded_tools(self) -> list[BaseTool]:
         """获取已加载的工具"""
         return list(self.loaded_tools.values())

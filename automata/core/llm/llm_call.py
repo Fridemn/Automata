@@ -1,11 +1,12 @@
-import os
 import sys
+
 from automata.core.utils.path_utils import get_project_root
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, get_project_root())
 
 from agents import Agent, Runner
+
 from automata.core.config.config import get_agent_config
 from automata.core.provider.simple_provider import create_simple_provider_from_config
 
@@ -21,25 +22,22 @@ agent_config = get_agent_config()
 agent = Agent(
     name=agent_config["name"],
     instructions=agent_config["instructions"],
-    model=provider.provider_config["model"]
+    model=provider.provider_config["model"],
 )
+
 
 async def main():
     # 提示用户输入查询内容
     user_query = input("请输入您的问题: ").strip()
 
     if not user_query:
-        print("查询内容不能为空")
         return
 
-    print(f"用户查询: {user_query}")
-    print("正在处理中...")
-
     # 使用Runner运行Agent
-    result = await Runner.run(agent, user_query, run_config=run_config)
+    await Runner.run(agent, user_query, run_config=run_config)
 
-    print(f"\nAgent响应: {result.final_output}")
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

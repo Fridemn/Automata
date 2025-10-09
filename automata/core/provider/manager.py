@@ -1,4 +1,5 @@
-from typing import List
+from __future__ import annotations
+
 from .entities import ProviderType
 from .provider import Provider
 
@@ -10,7 +11,7 @@ class ProviderManager:
             "id": "openai_provider",
             "type": "openai",
             "key": ["your_api_key_here"],
-            "model": "gpt-4"
+            "model": "gpt-4",
         }
         provider_settings = {}
         self.provider_inst = Provider(provider_config, provider_settings)
@@ -25,7 +26,8 @@ class ProviderManager:
     async def set_provider(self, provider_id: str, provider_type: ProviderType):
         """设置提供商。"""
         if provider_id != "openai_provider":
-            raise ValueError(f"提供商 {provider_id} 不存在，无法设置。")
+            msg = f"提供商 {provider_id} 不存在，无法设置。"
+            raise ValueError(msg)
         if provider_type == ProviderType.CHAT_COMPLETION:
             self.curr_provider_inst = self.provider_inst
 

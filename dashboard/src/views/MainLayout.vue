@@ -9,20 +9,20 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <nav class="nav-menu">
-            <button 
-              @click="currentView = 'chat'" 
+            <button
+              @click="currentView = 'chat'"
               :class="['nav-btn', { active: currentView === 'chat' }]"
             >
               💬 聊天
             </button>
-            <button 
-              @click="currentView = 'config'" 
+            <button
+              @click="currentView = 'config'"
               :class="['nav-btn', { active: currentView === 'config' }]"
             >
               ⚙️ 配置
             </button>
-            <button 
-              @click="currentView = 'tools'" 
+            <button
+              @click="currentView = 'tools'"
               :class="['nav-btn', { active: currentView === 'tools' }]"
             >
               🔧 工具管理

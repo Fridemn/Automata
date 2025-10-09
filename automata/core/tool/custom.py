@@ -4,10 +4,12 @@
 支持动态注册和调用自定义函数
 """
 
-import inspect
-import json
-from typing import Any, Dict, List, Callable, Optional, Union
-from agents import function_tool, FunctionTool
+from __future__ import annotations
+
+from typing import Any, Callable
+
+from agents import FunctionTool, function_tool
+
 from .base import BaseTool, ToolConfig
 
 
@@ -16,7 +18,7 @@ class CustomFunctionTool(BaseTool):
 
     def __init__(self, config: ToolConfig, task_manager=None):
         super().__init__(config, task_manager)
-        self._functions: Dict[str, Callable] = {}
+        self._functions: dict[str, Callable] = {}
 
     def initialize(self) -> None:
         """初始化工具"""
@@ -28,11 +30,16 @@ class CustomFunctionTool(BaseTool):
                     name=name,
                     func=func_info.get("function"),
                     description=func_info.get("description", ""),
-                    parameters=func_info.get("parameters", {})
+                    parameters=func_info.get("parameters", {}),
                 )
 
-    def register_function(self, name: str, func: Callable, description: str = "",
-                         parameters: Dict[str, Any] = None) -> None:
+    def register_function(
+        self,
+        name: str,
+        func: Callable,
+        description: str = "",
+        parameters: dict[str, Any] | None = None,
+    ) -> None:
         """注册自定义函数"""
         if parameters is None:
             parameters = {}
@@ -63,12 +70,13 @@ class CustomFunctionTool(BaseTool):
     def call_function(self, name: str, *args, **kwargs) -> Any:
         """调用自定义函数"""
         if name not in self._functions:
-            raise ValueError(f"Function '{name}' not found")
+            msg = f"Function '{name}' not found"
+            raise ValueError(msg)
 
         func = self._functions[name]
         return func(*args, **kwargs)
 
-    def get_registered_functions(self) -> List[str]:
+    def get_registered_functions(self) -> list[str]:
         """获取已注册的函数列表"""
         return list(self._functions.keys())
 
@@ -76,7 +84,7 @@ class CustomFunctionTool(BaseTool):
         """生成函数工具列表"""
         self._function_tools = list(self._functions.values())
 
-    def get_function_tools(self) -> List[FunctionTool]:
+    def get_function_tools(self) -> list[FunctionTool]:
         """获取函数工具列表"""
         if not self.active:
             return []
@@ -89,7 +97,11 @@ class CustomFunctionTool(BaseTool):
 
 
 # 便捷函数
-def create_custom_function_tool(name: str, functions: Dict[str, Dict[str, Any]] = None, task_manager=None) -> CustomFunctionTool:
+def create_custom_function_tool(
+    name: str,
+    functions: dict[str, dict[str, Any]] | None = None,
+    task_manager=None,
+) -> CustomFunctionTool:
     """创建自定义函数工具"""
     if functions is None:
         functions = {}
@@ -97,7 +109,7 @@ def create_custom_function_tool(name: str, functions: Dict[str, Dict[str, Any]] 
     config = ToolConfig(
         name=name,
         description=f"Custom function tool: {name}",
-        config={"functions": functions}
+        config={"functions": functions},
     )
 
     tool = CustomFunctionTool(config, task_manager)

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import enum
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import Any
 
 
 class ProviderType(enum.Enum):
@@ -21,5 +23,5 @@ class ProviderRequest:
     """系统提示词"""
     model: str | None = None
     """模型名称，为 None 时使用提供商的默认模型"""
-    tools: list[Dict[str, Any]] = field(default_factory=list)
+    tools: list[dict[str, Any]] = field(default_factory=list)
     """工具列表，格式与 openai-agent-sdk 的工具格式一致"""

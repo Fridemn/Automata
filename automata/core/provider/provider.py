@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import abc
-from typing import List, AsyncGenerator, Dict, Any
 from dataclasses import dataclass
-import asyncio
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 try:
-    from agents import Agent, Runner, OpenAIChatCompletionsModel
+    from agents import Agent, OpenAIChatCompletionsModel, Runner
     from agents.models.multi_provider import OpenAIProvider
     from agents.run import RunConfig
+
     AGENTS_AVAILABLE = True
 except ImportError:
     AGENTS_AVAILABLE = False
@@ -61,12 +66,12 @@ class OpenAIAgentProvider(AbstractProvider):
             self.model_provider = OpenAIProvider(
                 api_key=self.api_key,
                 base_url=self.api_base_url,
-                use_responses=False
+                use_responses=False,
             )
             self.agent = Agent(
                 name="AutomataAssistant",
                 instructions="You are a helpful assistant.",
-                model=self.provider_config.get("model", "gpt-4")
+                model=self.provider_config.get("model", "gpt-4"),
             )
         else:
             self.model_provider = None
@@ -81,10 +86,10 @@ class OpenAIAgentProvider(AbstractProvider):
             self.model_provider = OpenAIProvider(
                 api_key=self.api_key,
                 base_url=self.api_base_url,
-                use_responses=False
+                use_responses=False,
             )
 
-    async def get_models(self) -> List[str]:
+    async def get_models(self) -> list[str]:
         """获得支持的模型列表"""
         if not AGENTS_AVAILABLE:
             return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
@@ -94,19 +99,19 @@ class OpenAIAgentProvider(AbstractProvider):
     async def text_chat(
         self,
         prompt: str,
-        session_id: str = None,
-        image_urls: list[str] = None,
-        contexts: list = None,
-        system_prompt: str = None,
+        session_id: str | None = None,
+        image_urls: list[str] | None = None,
+        contexts: list | None = None,
+        system_prompt: str | None = None,
         model: str | None = None,
-        tools: list[Dict[str, Any]] = None,
+        tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> LLMResponse:
         """获得 LLM 的文本对话结果。会使用当前的模型进行对话。"""
         if not AGENTS_AVAILABLE:
             return LLMResponse(
                 role="assistant",
-                completion_text="OpenAI Agents SDK not available. Please install with: pip install openai-agents"
+                completion_text="OpenAI Agents SDK not available. Please install with: pip install openai-agents",
             )
 
         # 如果指定了不同的模型或工具，创建临时agent
@@ -114,7 +119,7 @@ class OpenAIAgentProvider(AbstractProvider):
             temp_model_provider = OpenAIProvider(
                 api_key=self.api_key,
                 base_url=self.api_base_url,
-                use_responses=False
+                use_responses=False,
             )
             temp_agent = Agent(
                 name="AutomataAssistant",
@@ -125,7 +130,11 @@ class OpenAIAgentProvider(AbstractProvider):
             temp_run_config = RunConfig(model_provider=temp_model_provider)
             result = await Runner.run(temp_agent, prompt, run_config=temp_run_config)
         else:
-            result = await Runner.run(self.agent, prompt, run_config=self.create_run_config())
+            result = await Runner.run(
+                self.agent,
+                prompt,
+                run_config=self.create_run_config(),
+            )
 
         return LLMResponse(
             role="assistant",
@@ -135,12 +144,12 @@ class OpenAIAgentProvider(AbstractProvider):
     async def text_chat_stream(
         self,
         prompt: str,
-        session_id: str = None,
-        image_urls: list[str] = None,
-        contexts: list = None,
-        system_prompt: str = None,
+        session_id: str | None = None,
+        image_urls: list[str] | None = None,
+        contexts: list | None = None,
+        system_prompt: str | None = None,
         model: str | None = None,
-        tools: list[Dict[str, Any]] = None,
+        tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ) -> AsyncGenerator[LLMResponse, None]:
         """获得 LLM 的流式文本对话结果。会使用当前的模型进行对话。在生成的最后会返回一次完整的结果。"""
@@ -148,13 +157,26 @@ class OpenAIAgentProvider(AbstractProvider):
             yield LLMResponse(
                 role="assistant",
                 completion_text="OpenAI Agents SDK not available. Please install with: pip install openai-agents",
-                is_chunk=True
+                is_chunk=True,
             )
             return
 
         # OpenAI Agents SDK 支持流式输出，但这里简化实现
-        response = await self.text_chat(prompt, session_id, image_urls, contexts, system_prompt, model, tools, **kwargs)
-        yield LLMResponse(role="assistant", completion_text=response.completion_text, is_chunk=True)
+        response = await self.text_chat(
+            prompt,
+            session_id,
+            image_urls,
+            contexts,
+            system_prompt,
+            model,
+            tools,
+            **kwargs,
+        )
+        yield LLMResponse(
+            role="assistant",
+            completion_text=response.completion_text,
+            is_chunk=True,
+        )
         yield response
 
 

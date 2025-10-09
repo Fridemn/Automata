@@ -4,15 +4,17 @@
 自动加载和管理工具扩展
 """
 
-import os
-import json
-import importlib.util
-import sys
-import logging
-from typing import Dict, List, Any, Optional
-from pathlib import Path
+from __future__ import annotations
 
-from ..base import BaseTool, ToolConfig
+import importlib.util
+import json
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from automata.core.tool.base import BaseTool, ToolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 class ExtensionInfo:
     """扩展信息"""
 
-    def __init__(self, path: str, package_info: Dict[str, Any]):
+    def __init__(self, path: str, package_info: dict[str, Any]):
         self.path = path
         self.name = package_info.get("name", "")
         self.version = package_info.get("version", "1.0.0")
@@ -37,10 +39,10 @@ class ExtensionLoader:
 
     def __init__(self, extensions_dir: str):
         self.extensions_dir = Path(extensions_dir)
-        self.loaded_extensions: Dict[str, ExtensionInfo] = {}
-        self.loaded_tools: Dict[str, BaseTool] = {}
+        self.loaded_extensions: dict[str, ExtensionInfo] = {}
+        self.loaded_tools: dict[str, BaseTool] = {}
 
-    def discover_extensions(self) -> List[ExtensionInfo]:
+    def discover_extensions(self) -> list[ExtensionInfo]:
         """发现所有扩展"""
         extensions = []
 
@@ -52,7 +54,7 @@ class ExtensionLoader:
                 package_file = item / "package.json"
                 if package_file.exists():
                     try:
-                        with open(package_file, 'r', encoding='utf-8') as f:
+                        with open(package_file, encoding="utf-8") as f:
                             package_info = json.load(f)
 
                         extension = ExtensionInfo(str(item), package_info)
@@ -62,7 +64,11 @@ class ExtensionLoader:
 
         return extensions
 
-    def load_extension(self, extension: ExtensionInfo, task_manager=None) -> Optional[BaseTool]:
+    def load_extension(
+        self,
+        extension: ExtensionInfo,
+        task_manager=None,
+    ) -> BaseTool | None:
         """加载单个扩展"""
         try:
             # 检查依赖
@@ -73,13 +79,15 @@ class ExtensionLoader:
             # 导入主模块
             main_file = Path(extension.path) / extension.main_file
             if not main_file.exists():
-                logger.warning(f"Extension {extension.name} main file not found: {main_file}")
+                logger.warning(
+                    f"Extension {extension.name} main file not found: {main_file}",
+                )
                 return None
 
             # 动态导入模块
             spec = importlib.util.spec_from_file_location(
                 f"extension_{extension.name}",
-                main_file
+                main_file,
             )
 
             if spec is None or spec.loader is None:
@@ -93,9 +101,10 @@ class ExtensionLoader:
             spec.loader.exec_module(module)
 
             # 获取工具类
-            if hasattr(module, 'create_tool'):
+            if hasattr(module, "create_tool"):
                 # 尝试调用create_tool，传递task_manager如果它接受参数
                 import inspect
+
                 create_tool_sig = inspect.signature(module.create_tool)
                 if len(create_tool_sig.parameters) > 0:
                     tool = module.create_tool(task_manager=task_manager)
@@ -107,21 +116,27 @@ class ExtensionLoader:
                     tool.config.version = extension.version
                     self.loaded_tools[extension.name] = tool
                     self.loaded_extensions[extension.name] = extension
-                    logger.info(f"Loaded extension: {extension.name} ({extension.category})")
+                    logger.info(
+                        f"Loaded extension: {extension.name} ({extension.category})",
+                    )
                     return tool
-                else:
-                    logger.warning(f"Extension {extension.name} create_tool() did not return a BaseTool")
+                logger.warning(
+                    f"Extension {extension.name} create_tool() did not return a BaseTool",
+                )
             else:
-                logger.warning(f"Extension {extension.name} does not have create_tool() function")
+                logger.warning(
+                    f"Extension {extension.name} does not have create_tool() function",
+                )
 
         except Exception as e:
-            logger.error(f"Failed to load extension {extension.name}: {e}")
+            logger.exception(f"Failed to load extension {extension.name}: {e}")
             import traceback
+
             traceback.print_exc()
 
         return None
 
-    def load_all_extensions(self, task_manager=None) -> List[BaseTool]:
+    def load_all_extensions(self, task_manager=None) -> list[BaseTool]:
         """加载所有扩展"""
         extensions = self.discover_extensions()
         loaded_tools = []
@@ -150,7 +165,7 @@ class ExtensionLoader:
             return True
         return False
 
-    def get_extension_status(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_extension_status(self, name: str) -> dict[str, Any] | None:
         """获取扩展状态"""
         if name in self.loaded_tools:
             tool = self.loaded_tools[name]
@@ -161,7 +176,7 @@ class ExtensionLoader:
                 "enabled": tool.enabled,
                 "active": tool.active,
                 "category": ext_info.category if ext_info else "unknown",
-                "version": ext_info.version if ext_info else "unknown"
+                "version": ext_info.version if ext_info else "unknown",
             }
         return None
 
@@ -180,11 +195,11 @@ class ExtensionLoader:
         if module_name in sys.modules:
             del sys.modules[module_name]
 
-    def get_loaded_extensions(self) -> Dict[str, ExtensionInfo]:
+    def get_loaded_extensions(self) -> dict[str, ExtensionInfo]:
         """获取已加载的扩展"""
         return self.loaded_extensions.copy()
 
-    def get_loaded_tools(self) -> Dict[str, BaseTool]:
+    def get_loaded_tools(self) -> dict[str, BaseTool]:
         """获取已加载的工具"""
         return self.loaded_tools.copy()
 
@@ -194,7 +209,7 @@ class ExtensionLoader:
         # 目前简单返回 True
         return True
 
-    def reload_extension(self, name: str) -> Optional[BaseTool]:
+    def reload_extension(self, name: str) -> BaseTool | None:
         """重新加载扩展"""
         self.unload_extension(name)
         if name in self.loaded_extensions:
@@ -212,12 +227,16 @@ def get_extension_loader() -> ExtensionLoader:
     return extension_loader
 
 
-def load_all_extensions() -> List[BaseTool]:
+def load_all_extensions() -> list[BaseTool]:
     """加载所有扩展"""
     return extension_loader.load_all_extensions()
 
 
-def create_extension_template(name: str, description: str, category: str = "general") -> None:
+def create_extension_template(
+    name: str,
+    description: str,
+    category: str = "general",
+) -> None:
     """创建扩展模板"""
     extension_dir = extension_loader.extensions_dir / name
 
@@ -236,10 +255,10 @@ def create_extension_template(name: str, description: str, category: str = "gene
         "author": "Automata",
         "main": "main.py",
         "enabled": True,
-        "dependencies": []
+        "dependencies": [],
     }
 
-    with open(extension_dir / "package.json", 'w', encoding='utf-8') as f:
+    with open(extension_dir / "package.json", "w", encoding="utf-8") as f:
         json.dump(package_info, f, indent=2, ensure_ascii=False)
 
     # 创建 main.py 模板
@@ -253,7 +272,7 @@ from automata.core.tool.base import BaseTool, ToolConfig
 from agents import function_tool
 
 
-class {name.replace('_', ' ').title().replace(' ', '')}Tool(BaseTool):
+class {name.replace("_", " ").title().replace(" ", "")}Tool(BaseTool):
     """{name} 工具"""
 
     def __init__(self, config: ToolConfig):
@@ -277,18 +296,15 @@ class {name.replace('_', ' ').title().replace(' ', '')}Tool(BaseTool):
         return self._function_tools
 
 
-def create_tool() -> {name.replace('_', ' ').title().replace(' ', '')}Tool:
+def create_tool() -> {name.replace("_", " ").title().replace(" ", "")}Tool:
     """创建工具实例"""
     config = ToolConfig(
         name="{name}",
         description="{description}",
         category="{category}"
     )
-    return {name.replace('_', ' ').title().replace(' ', '')}Tool(config)
+    return {name.replace("_", " ").title().replace(" ", "")}Tool(config)
 '''
 
-    with open(extension_dir / "main.py", 'w', encoding='utf-8') as f:
+    with open(extension_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(main_content)
-
-    print(f"✅ Created extension template: {name}")
-    print(f"📁 Location: {extension_dir}")
