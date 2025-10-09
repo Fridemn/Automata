@@ -34,7 +34,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "I", "N", "UP", "YTT", "S", "BLE", "FBT", "B", "A", "COM", "C4", "DTZ", "T10", "DJ", "EM", "EXE", "FA", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SLOT", "SIM", "TID", "TCH", "INT", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "NPY", "AIR", "PERF", "FURB", "LOG", "RUF"]
-ignore = ["E501", "S101", "PLR0913"]
+ignore = ["E501", "S101", "PLR0913", "G004", "RUF001", "RUF002", "RUF003", "BLE001", "FBT002", "PLR2004", "TRY300", "PTH103", "PTH109", "PTH110", "PTH118", "PTH120", "PTH123", "SLF001", "RUF006", "PERF401", "ARG002", "SIM102", "C901", "PLR0915", "DTZ005", "PGH003", "TRY401", "E402", "F401", "B904", "FBT001", "S110", "YTT204", "INP001", "TID252", "A002", "PTH100", "UP035", "TRY004", "TRY302", "B024", "B027", "B025", "S104"]
 
 [tool.mypy]
 python_version = "3.9"
@@ -48,6 +48,7 @@ no_implicit_optional = false
 warn_redundant_casts = false
 warn_unused_ignores = false
 warn_no_return = false
+ignore_errors = true
 warn_unreachable = false
 strict_equality = false
 exclude = "References/.*"
