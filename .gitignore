@@ -2,6 +2,5 @@ docs/
 *.pyc
 .vscode/
 __pycache__/
-automata/data/
 References/
 data/
