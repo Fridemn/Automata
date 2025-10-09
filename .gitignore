@@ -4,3 +4,6 @@ docs/
 __pycache__/
 References/
 data/
+.venv/
+uv.lock
+automata.egg-info/
