@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlmodel import SQLModel, select
 
@@ -31,6 +32,100 @@ class DatabaseManager:
         """异步初始化数据库表"""
         async with self.engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
+            # 创建性能优化索引
+            await self._create_performance_indexes(conn)
+
+    async def _create_performance_indexes(self, conn):
+        """创建性能优化索引"""
+        # 为Conversation表创建索引
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_session_id
+            ON conversations(session_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_platform_id
+            ON conversations(platform_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_user_id
+            ON conversations(user_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_updated_at
+            ON conversations(updated_at);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_session_updated
+            ON conversations(session_id, updated_at);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_conversations_platform_user
+            ON conversations(platform_id, user_id);
+        """),
+        )
+
+        # 为Session表创建索引
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_sessions_platform_id
+            ON sessions(platform_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_sessions_user_id
+            ON sessions(user_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_sessions_platform_user
+            ON sessions(platform_id, user_id);
+        """),
+        )
+
+        # 为Task表创建索引
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_tasks_session_id
+            ON tasks(session_id);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_tasks_status
+            ON tasks(status);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_tasks_created_at
+            ON tasks(created_at);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_tasks_session_status
+            ON tasks(session_id, status);
+        """),
+        )
+        await conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS ix_tasks_status_created
+            ON tasks(status, created_at);
+        """),
+        )
 
     async def create_conversation(
         self,
@@ -118,8 +213,23 @@ class DatabaseManager:
         user_id: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        cursor: datetime | None = None,
     ) -> list[Conversation]:
-        """获取对话列表"""
+        """获取对话列表
+
+        支持传统的offset分页和游标分页（推荐）。
+
+        Args:
+            session_id: 会话ID过滤
+            platform_id: 平台ID过滤
+            user_id: 用户ID过滤
+            limit: 返回的最大数量
+            offset: 传统分页的偏移量（与cursor互斥）
+            cursor: 游标分页的时间戳（推荐，用于获取该时间戳之前的记录）
+
+        Returns:
+            对话列表
+        """
         async with AsyncSession(self.engine) as session:
             statement = select(Conversation)
 
@@ -130,11 +240,17 @@ class DatabaseManager:
             if user_id:
                 statement = statement.where(Conversation.user_id == user_id)
 
-            statement = (
-                statement.order_by(Conversation.updated_at.desc())
-                .limit(limit)
-                .offset(offset)
-            )
+            # 游标分页（推荐）
+            if cursor is not None:
+                statement = statement.where(Conversation.updated_at < cursor)
+
+            statement = statement.order_by(Conversation.updated_at.desc())
+
+            # 只在没有游标时使用offset分页
+            if cursor is None:
+                statement = statement.offset(offset)
+
+            statement = statement.limit(limit)
             result = await session.execute(statement)
             return list(result.scalars().all())
 

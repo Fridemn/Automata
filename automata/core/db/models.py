@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlmodel import JSON, Field, SQLModel, UniqueConstraint
+from sqlmodel import JSON, Field, Index, SQLModel, UniqueConstraint
 
 
 class Conversation(SQLModel, table=True):
@@ -39,7 +39,15 @@ class Conversation(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
     )
 
-    __table_args__ = (UniqueConstraint("conversation_id", name="uix_conversation_id"),)
+    __table_args__ = (
+        UniqueConstraint("conversation_id", name="uix_conversation_id"),
+        Index("ix_conversations_session_id", "session_id"),
+        Index("ix_conversations_platform_id", "platform_id"),
+        Index("ix_conversations_user_id", "user_id"),
+        Index("ix_conversations_updated_at", "updated_at"),
+        Index("ix_conversations_session_updated", "session_id", "updated_at"),
+        Index("ix_conversations_platform_user", "platform_id", "user_id"),
+    )
 
 
 class Session(SQLModel, table=True):
@@ -66,7 +74,12 @@ class Session(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
     )
 
-    __table_args__ = (UniqueConstraint("session_id", name="uix_session_id"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uix_session_id"),
+        Index("ix_sessions_platform_id", "platform_id"),
+        Index("ix_sessions_user_id", "user_id"),
+        Index("ix_sessions_platform_user", "platform_id", "user_id"),
+    )
 
 
 class Task(SQLModel, table=True):
@@ -104,7 +117,14 @@ class Task(SQLModel, table=True):
     )
     completed_at: datetime | None = Field(default=None)  # 完成时间
 
-    __table_args__ = (UniqueConstraint("task_id", name="uix_task_id"),)
+    __table_args__ = (
+        UniqueConstraint("task_id", name="uix_task_id"),
+        Index("ix_tasks_session_id", "session_id"),
+        Index("ix_tasks_status", "status"),
+        Index("ix_tasks_created_at", "created_at"),
+        Index("ix_tasks_session_status", "session_id", "status"),
+        Index("ix_tasks_status_created", "status", "created_at"),
+    )
 
 
 @dataclass
