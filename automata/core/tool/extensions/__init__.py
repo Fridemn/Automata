@@ -8,10 +8,13 @@ import os
 import json
 import importlib.util
 import sys
+import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from ..base import BaseTool, ToolConfig
+
+logger = logging.getLogger(__name__)
 
 
 class ExtensionInfo:
@@ -55,7 +58,7 @@ class ExtensionLoader:
                         extension = ExtensionInfo(str(item), package_info)
                         extensions.append(extension)
                     except Exception as e:
-                        print(f"⚠️ Failed to load extension {item.name}: {e}")
+                        logger.warning(f"Failed to load extension {item.name}: {e}")
 
         return extensions
 
@@ -64,13 +67,13 @@ class ExtensionLoader:
         try:
             # 检查依赖
             if not self._check_dependencies(extension):
-                print(f"⚠️ Extension {extension.name} dependencies not satisfied")
+                logger.warning(f"Extension {extension.name} dependencies not satisfied")
                 return None
 
             # 导入主模块
             main_file = Path(extension.path) / extension.main_file
             if not main_file.exists():
-                print(f"⚠️ Extension {extension.name} main file not found: {main_file}")
+                logger.warning(f"Extension {extension.name} main file not found: {main_file}")
                 return None
 
             # 动态导入模块
@@ -80,7 +83,7 @@ class ExtensionLoader:
             )
 
             if spec is None or spec.loader is None:
-                print(f"⚠️ Failed to create spec for extension {extension.name}")
+                logger.warning(f"Failed to create spec for extension {extension.name}")
                 return None
 
             module = importlib.util.module_from_spec(spec)
@@ -104,15 +107,15 @@ class ExtensionLoader:
                     tool.config.version = extension.version
                     self.loaded_tools[extension.name] = tool
                     self.loaded_extensions[extension.name] = extension
-                    print(f"✅ Loaded extension: {extension.name} ({extension.category})")
+                    logger.info(f"Loaded extension: {extension.name} ({extension.category})")
                     return tool
                 else:
-                    print(f"⚠️ Extension {extension.name} create_tool() did not return a BaseTool")
+                    logger.warning(f"Extension {extension.name} create_tool() did not return a BaseTool")
             else:
-                print(f"⚠️ Extension {extension.name} does not have create_tool() function")
+                logger.warning(f"Extension {extension.name} does not have create_tool() function")
 
         except Exception as e:
-            print(f"❌ Failed to load extension {extension.name}: {e}")
+            logger.error(f"Failed to load extension {extension.name}: {e}")
             import traceback
             traceback.print_exc()
 
@@ -129,7 +132,7 @@ class ExtensionLoader:
                 if tool:
                     loaded_tools.append(tool)
             else:
-                print(f"⏭️ Extension {extension.name} is disabled")
+                logger.info(f"Extension {extension.name} is disabled")
 
         return loaded_tools
 
@@ -219,7 +222,7 @@ def create_extension_template(name: str, description: str, category: str = "gene
     extension_dir = extension_loader.extensions_dir / name
 
     if extension_dir.exists():
-        print(f"Extension {name} already exists")
+        logger.warning(f"Extension {name} already exists")
         return
 
     extension_dir.mkdir(parents=True)

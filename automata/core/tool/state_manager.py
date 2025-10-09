@@ -6,8 +6,11 @@
 
 import json
 import os
+import logging
 from typing import Any, Dict, List, Set
 from ..utils.path_utils import get_data_dir
+
+logger = logging.getLogger(__name__)
 
 
 class ToolStateManager:
@@ -30,7 +33,7 @@ class ToolStateManager:
                     self._disabled_tools = set(states.get('disabled_tools', []))
                     self._builtin_disabled_tools = set(states.get('builtin_disabled_tools', []))
         except Exception as e:
-            print(f"加载工具状态失败: {e}")
+            logger.error(f"加载工具状态失败: {e}")
             self._disabled_tools = set()
             self._builtin_disabled_tools = set()
 
@@ -45,7 +48,7 @@ class ToolStateManager:
             with open(self.state_file, 'w', encoding='utf-8') as f:
                 json.dump(states, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"保存工具状态失败: {e}")
+            logger.error(f"保存工具状态失败: {e}")
 
     def is_tool_disabled(self, name: str) -> bool:
         """检查工具是否被禁用"""

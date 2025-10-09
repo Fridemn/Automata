@@ -5,10 +5,13 @@
 """
 
 import asyncio
+import logging
 from typing import Dict, Any, List
 from agents import function_tool, FunctionTool
 from .base import BaseTool, ToolConfig
 from ..tasks.task_manager import TaskResult
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncTaskTool(BaseTool):
@@ -59,7 +62,6 @@ class AsyncTaskTool(BaseTool):
                 return f"Failed to create task: {str(e)}"
 
         # 创建函数工具
-        from agents import function_tool
         return function_tool("Create a long-running asynchronous task")(create_long_running_task_impl)
 
     def _get_task_status_tool(self) -> FunctionTool:
@@ -79,7 +81,6 @@ class AsyncTaskTool(BaseTool):
                 return f"Failed to get task status: {str(e)}"
 
         # 创建函数工具
-        from agents import function_tool
         return function_tool("Get the status of an asynchronous task")(get_task_status_impl)
 
     def _list_tasks_tool(self) -> FunctionTool:
@@ -108,7 +109,6 @@ class AsyncTaskTool(BaseTool):
                 return f"Failed to list tasks: {str(e)}"
 
         # 创建函数工具
-        from agents import function_tool
         return function_tool("List asynchronous tasks")(list_tasks_impl)
 
     def _delete_task_tool(self) -> FunctionTool:
@@ -128,7 +128,6 @@ class AsyncTaskTool(BaseTool):
                 return f"Failed to delete task: {str(e)}"
 
         # 创建函数工具
-        from agents import function_tool
         return function_tool("Delete an asynchronous task")(delete_task_impl)
 
     def get_function_tools(self) -> List[FunctionTool]:
@@ -138,14 +137,14 @@ class AsyncTaskTool(BaseTool):
     async def _simulate_long_task(self, duration: int, task_name: str) -> TaskResult:
         """模拟长时间运行的任务"""
         try:
-            print(f"Starting task: {task_name} for {duration} seconds")
+            logger.info(f"Starting task: {task_name} for {duration} seconds")
             await asyncio.sleep(duration)
             result = f"Task '{task_name}' completed successfully after {duration} seconds"
-            print(result)
+            logger.info(result)
             return TaskResult(success=True, result=result)
         except Exception as e:
             error_msg = f"Task '{task_name}' failed: {str(e)}"
-            print(error_msg)
+            logger.error(error_msg)
             return TaskResult(success=False, error=error_msg)
 
 

@@ -6,6 +6,7 @@ Vector database tools for semantic search and knowledge management
 
 import os
 import chromadb
+import logging
 from typing import List, Dict, Any, Annotated
 from agents import function_tool
 from automata.core.utils.path_utils import get_project_root, get_data_dir
@@ -14,6 +15,8 @@ import openai
 
 from automata.core.tool.base import BaseTool, ToolConfig
 from automata.core.config.config import get_vector_db_config, get_openai_config
+
+logger = logging.getLogger(__name__)
 
 
 class VectorDBTool(BaseTool):
@@ -60,11 +63,11 @@ class VectorDBTool(BaseTool):
         try:
             # 尝试获取现有集合
             self.collection = self.client.get_collection(name=self.collection_name)
-            print(f"Using existing collection: {self.collection_name}")
+            logger.info(f"Using existing collection: {self.collection_name}")
         except ValueError:
             # 集合不存在，创建新集合
             self.collection = self.client.create_collection(name=self.collection_name)
-            print(f"Created new collection: {self.collection_name}")
+            logger.info(f"Created new collection: {self.collection_name}")
 
     def _check_embedding_dimension(self, embedding_dim: int) -> bool:
         """检查嵌入维度是否与集合匹配"""
@@ -95,7 +98,7 @@ class VectorDBTool(BaseTool):
 
         # 检查维度匹配
         if embeddings and not self._check_embedding_dimension(len(embeddings[0])):
-            print(f"Embedding dimension mismatch, recreating collection {self.collection_name}")
+            logger.warning(f"Embedding dimension mismatch, recreating collection {self.collection_name}")
             self.client.delete_collection(name=self.collection_name)
             self.collection = self.client.create_collection(name=self.collection_name)
 
