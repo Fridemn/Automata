@@ -10,9 +10,16 @@ import json
 import logging
 import os
 
+from agents import Agent
 from quart import Quart, jsonify, request
 
 from automata.core.utils.path_utils import get_static_folder
+
+from ..config.config import get_agent_config
+from ..managers.context_mgr import ContextManager
+from ..provider.simple_provider import create_simple_provider_from_config
+from ..tool import get_tool_manager, initialize_tools
+from .router import setup_routes
 
 # 配置日志
 logging.getLogger("quart.app").setLevel(logging.INFO)
@@ -44,10 +51,6 @@ class AutomataDashboard:
     def _init_llm_provider(self):
         """初始化LLM provider和上下文管理器"""
         try:
-            from ..config.config import get_agent_config
-            from ..managers.context_mgr import ContextManager
-            from ..provider.simple_provider import create_simple_provider_from_config
-
             self.provider = create_simple_provider_from_config()
             self.run_config = self.provider.create_run_config()
 
@@ -86,11 +89,6 @@ class AutomataDashboard:
     def _get_or_create_agent(self, conversation_id: str):
         """获取或创建Agent实例 - 现在使用全局Agent"""
         if self.global_agent is None:
-            from agents import Agent
-
-            from ..config.config import get_agent_config
-            from ..tool import get_tool_manager
-
             get_agent_config()
             tool_mgr = get_tool_manager()
 
@@ -118,15 +116,12 @@ class AutomataDashboard:
 
     def _setup_routes(self):
         """设置路由"""
-        from .router import setup_routes
 
         setup_routes(self.app, self)
 
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
         """启动Web服务器"""
         # 初始化工具系统
-        from ..config.config import get_agent_config
-        from ..tool import initialize_tools
 
         agent_config = get_agent_config()
         tool_config = {
