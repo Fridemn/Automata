@@ -2,7 +2,7 @@
 
 ## Installation
 
-1. Ensure you have Python 3.9 or higher installed.
+1. Ensure you have Python 3.10 or higher installed.
 2. Install `uv` (a fast Python package installer):
    ```bash
    pip install uv
