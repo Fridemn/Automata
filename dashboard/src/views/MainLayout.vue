@@ -118,6 +118,7 @@ const createNewConversation = async () => {
     )
     if (data.conversation_id) {
       currentConversationId.value = data.conversation_id
+      conversationsStore.setCurrentConversationId(data.conversation_id)
       await loadConversationsList()
     }
   } catch (error) {

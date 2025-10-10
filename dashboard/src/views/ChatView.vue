@@ -39,6 +39,7 @@ import { useChatStore } from '@/store/chat'
 import { useConversationsStore } from '@/store/conversations'
 import { renderMarkdown } from '@/utils/markdown'
 import { sendChatMessage } from '@/api/chat'
+import { createConversation } from '@/api/conversations'
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
@@ -64,12 +65,32 @@ const sendMessage = async () => {
   response.value = ''
 
   try {
-    const data = await sendChatMessage(message.value, 'default_session')
+    let conversationId = currentConversationId.value
+
+    // 如果没有当前对话，创建一个新对话
+    if (!conversationId) {
+      const createData = await createConversation(
+        'default_session',
+        `新对话 ${new Date().toLocaleString()}`
+      )
+      if (createData.conversation_id) {
+        conversationId = createData.conversation_id
+        conversationsStore.setCurrentConversationId(conversationId)
+      } else {
+        throw new Error('Failed to create conversation')
+      }
+    }
+
+    const data = await sendChatMessage(message.value, 'default_session', conversationId)
 
     if (data.response) {
       response.value = data.response
-      conversationsStore.setCurrentConversationId(data.conversation_id)
-      await chatStore.loadConversationHistory(data.conversation_id)
+      // 确保conversation_id一致
+      if (data.conversation_id && data.conversation_id !== conversationId) {
+        conversationsStore.setCurrentConversationId(data.conversation_id)
+        conversationId = data.conversation_id
+      }
+      await chatStore.loadConversationHistory(conversationId)
     } else {
       response.value = `Error: ${data.error || 'Unknown error'}`
     }

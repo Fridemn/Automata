@@ -1,4 +1,8 @@
-export const sendChatMessage = async (message: string, sessionId: string) => {
+export const sendChatMessage = async (
+  message: string,
+  sessionId: string,
+  conversationId?: string
+) => {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -7,6 +11,7 @@ export const sendChatMessage = async (message: string, sessionId: string) => {
     body: JSON.stringify({
       message,
       session_id: sessionId,
+      conversation_id: conversationId,
     }),
   })
   return res.json()
