@@ -8,10 +8,12 @@ sys.path.insert(0, get_project_root())
 from agents import Agent, Runner
 
 from automata.core.config.config import get_agent_config
-from automata.core.provider.simple_provider import create_simple_provider_from_config
+from automata.core.provider.sources.openai_source import (
+    create_openai_source_provider_from_config,
+)
 
 # 从配置文件创建 provider
-provider = create_simple_provider_from_config()
+provider = create_openai_source_provider_from_config()
 model_provider = provider.get_model_provider()
 run_config = provider.create_run_config()
 

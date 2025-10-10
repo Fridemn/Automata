@@ -70,8 +70,11 @@ class OpenAIAgentProvider(AbstractProvider):
             )
             self.agent = Agent(
                 name="AutomataAssistant",
-                instructions="You are a helpful assistant.",
-                model=self.provider_config.get("model", "gpt-4"),
+                instructions=self.provider_config.get(
+                    "instructions",
+                    "You are a helpful assistant.",
+                ),
+                model=self.provider_config.get("model"),
             )
         else:
             self.model_provider = None
@@ -92,9 +95,8 @@ class OpenAIAgentProvider(AbstractProvider):
     async def get_models(self) -> list[str]:
         """获得支持的模型列表"""
         if not AGENTS_AVAILABLE:
-            return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
-        # OpenAI Agents SDK 默认支持多种模型，这里返回常用模型
-        return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
+            return []
+        return []
 
     async def text_chat(
         self,
@@ -123,8 +125,8 @@ class OpenAIAgentProvider(AbstractProvider):
             )
             temp_agent = Agent(
                 name="AutomataAssistant",
-                instructions=system_prompt or "You are a helpful assistant.",
-                model=model or self.provider_config.get("model", "gpt-4"),
+                instructions=system_prompt,
+                model=model or self.provider_config.get("model"),
                 tools=tools or [],
             )
             temp_run_config = RunConfig(model_provider=temp_model_provider)

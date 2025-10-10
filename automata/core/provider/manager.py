@@ -11,7 +11,6 @@ class ProviderManager:
             "id": "openai_provider",
             "type": "openai",
             "key": ["your_api_key_here"],
-            "model": "gpt-4",
         }
         provider_settings = {}
         self.provider_inst = Provider(provider_config, provider_settings)

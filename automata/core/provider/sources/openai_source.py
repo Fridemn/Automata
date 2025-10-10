@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
+from typing import Any, List
 
 from automata.core.utils.path_utils import get_project_root
 
@@ -14,6 +14,7 @@ def _get_project_root():
 sys.path.insert(0, _get_project_root())
 
 try:
+    from agents import Agent, Runner
     from agents.models.multi_provider import OpenAIProvider
     from agents.run import RunConfig
 
@@ -23,11 +24,11 @@ except ImportError:
 
 from automata.core.config.config import get_openai_config
 
-from .provider import AbstractProvider, LLMResponse
+from ..provider import AbstractProvider, LLMResponse
 
 
-class SimpleOpenAIProvider(AbstractProvider):
-    """简单的 OpenAI Provider，使用 OpenAIProvider 而不是 ChatCompletionsModel"""
+class OpenAISourceProvider(AbstractProvider):
+    """OpenAI Source Provider，使用 OpenAI Agents SDK"""
 
     def __init__(self, provider_config: dict, provider_settings: dict) -> None:
         super().__init__(provider_config)
@@ -59,9 +60,8 @@ class SimpleOpenAIProvider(AbstractProvider):
     async def get_models(self) -> list[str]:
         """获得支持的模型列表"""
         if not AGENTS_AVAILABLE:
-            return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
-        # OpenAI Agents SDK 默认支持多种模型，这里返回常用模型
-        return ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
+            return []
+        return []
 
     async def text_chat(
         self,
@@ -81,10 +81,32 @@ class SimpleOpenAIProvider(AbstractProvider):
                 completion_text="OpenAI Agents SDK not available. Please install with: pip install openai-agents",
             )
 
-        # 这里简化实现，返回错误信息，因为这个provider主要用于配置model_provider
+        if not model:
+            msg = "Model must be specified"
+            raise ValueError(msg)
+
+        if not system_prompt:
+            msg = "System prompt must be specified"
+            raise ValueError(msg)
+
+        # 创建临时agent，因为没有默认配置
+        temp_model_provider = OpenAIProvider(
+            api_key=self.api_key,
+            base_url=self.api_base_url,
+            use_responses=False,
+        )
+        temp_agent = Agent(
+            name="AutomataAssistant",
+            instructions=system_prompt,
+            model=model,
+            tools=tools or [],
+        )
+        temp_run_config = RunConfig(model_provider=temp_model_provider)
+        result = await Runner.run(temp_agent, prompt, run_config=temp_run_config)
+
         return LLMResponse(
             role="assistant",
-            completion_text="This provider is for model configuration only. Use OpenAIAgentProvider for chat.",
+            completion_text=str(result.final_output),
         )
 
     async def text_chat_stream(
@@ -98,8 +120,24 @@ class SimpleOpenAIProvider(AbstractProvider):
         tools: list[dict[str, Any]] | None = None,
         **kwargs,
     ):
-        """获得 LLM 的流式文本对话结果。"""
-        # 简化实现
+        """获得 LLM 的流式文本对话结果。会使用当前的模型进行对话。"""
+        if not AGENTS_AVAILABLE:
+            yield LLMResponse(
+                role="assistant",
+                completion_text="OpenAI Agents SDK not available. Please install with: pip install openai-agents",
+                is_chunk=True,
+            )
+            return
+
+        if not model:
+            msg = "Model must be specified"
+            raise ValueError(msg)
+
+        if not system_prompt:
+            msg = "System prompt must be specified"
+            raise ValueError(msg)
+
+        # OpenAI Agents SDK 支持流式输出，但这里简化实现
         response = await self.text_chat(
             prompt,
             session_id,
@@ -128,8 +166,8 @@ class SimpleOpenAIProvider(AbstractProvider):
         return RunConfig(model_provider=self.model_provider)
 
 
-def create_simple_provider_from_config() -> SimpleOpenAIProvider:
-    """从配置文件创建简单的 OpenAI Provider"""
+def create_openai_source_provider_from_config() -> OpenAISourceProvider:
+    """从配置文件创建 OpenAI Source Provider"""
     openai_config = get_openai_config()
 
     api_key = openai_config.get("api_key", "")
@@ -138,12 +176,11 @@ def create_simple_provider_from_config() -> SimpleOpenAIProvider:
         raise ValueError(msg)
 
     provider_config = {
-        "id": "simple_openai_provider",
-        "type": "openai_simple",
+        "id": "openai_source_provider",
+        "type": "openai_source",
         "key": [api_key],
         "api_base_url": openai_config.get("api_base_url"),
-        "model": openai_config.get("model"),
     }
     provider_settings = {}
 
-    return SimpleOpenAIProvider(provider_config, provider_settings)
+    return OpenAISourceProvider(provider_config, provider_settings)

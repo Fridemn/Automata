@@ -15,9 +15,9 @@ from quart import Quart, jsonify, request
 
 from automata.core.utils.path_utils import get_static_folder
 
-from ..config.config import get_agent_config
+from ..config.config import get_agent_config, get_openai_config
 from ..managers.context_mgr import ContextManager
-from ..provider.simple_provider import create_simple_provider_from_config
+from ..provider.sources.openai_source import create_openai_source_provider_from_config
 from ..tool import get_tool_manager, initialize_tools
 from .router import setup_routes
 
@@ -51,7 +51,7 @@ class AutomataDashboard:
     def _init_llm_provider(self):
         """初始化LLM provider和上下文管理器"""
         try:
-            self.provider = create_simple_provider_from_config()
+            self.provider = create_openai_source_provider_from_config()
             self.run_config = self.provider.create_run_config()
 
             # 初始化上下文管理器
@@ -96,10 +96,16 @@ class AutomataDashboard:
             tools = tool_mgr.get_all_function_tools()
             mcp_servers = tool_mgr.get_mcp_servers()
 
+            openai_config = get_openai_config()
+            model = openai_config.get("model")
+            if not model:
+                msg = "Model must be specified in openai config"
+                raise ValueError(msg)
+
             self.global_agent = Agent(
                 name=self.agent_config["name"],
                 instructions=self.agent_config["instructions"],
-                model=self.provider.provider_config["model"],
+                model=model,
                 tools=tools,
                 mcp_servers=mcp_servers,
             )
