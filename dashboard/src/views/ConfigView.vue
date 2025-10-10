@@ -5,7 +5,9 @@
       <div v-for="(section, sectionKey) in config" :key="sectionKey" class="config-section">
         <h3>{{ getSectionTitle(sectionKey as string) }}</h3>
         <div v-for="(field, fieldKey) in section" :key="fieldKey" class="form-group">
-          <label v-if="field.type !== 'checkbox'" :for="`${sectionKey}_${fieldKey}`">{{ field.label }}</label>
+          <label v-if="field.type !== 'checkbox'" :for="`${sectionKey}_${fieldKey}`">{{
+            field.label
+          }}</label>
           <input
             v-if="field.type === 'text' || field.type === 'password' || field.type === 'number'"
             :id="`${sectionKey}_${fieldKey}`"
@@ -33,11 +35,7 @@
             </option>
           </select>
           <label v-else-if="field.type === 'checkbox'" class="checkbox-label">
-            <input
-              :id="`${sectionKey}_${fieldKey}`"
-              v-model="field.value"
-              type="checkbox"
-            />
+            <input :id="`${sectionKey}_${fieldKey}`" v-model="field.value" type="checkbox" />
             {{ field.label }}
           </label>
         </div>
@@ -57,6 +55,7 @@
 import { ref, onMounted } from 'vue'
 
 interface FieldConfig {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any
   type: string
   label: string
@@ -81,7 +80,7 @@ const originalConfig = ref<Config | null>(null)
 const getSectionTitle = (sectionKey: string): string => {
   const titles: { [key: string]: string } = {
     openai: 'OpenAI 配置',
-    agent: 'Agent 配置'
+    agent: 'Agent 配置',
   }
   return titles[sectionKey] || sectionKey
 }
@@ -107,9 +106,9 @@ const saveConfig = async () => {
     const response = await fetch('/api/config', {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(config.value)
+      body: JSON.stringify(config.value),
     })
 
     if (response.ok) {
@@ -196,7 +195,7 @@ $app-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 
           // 特殊处理checkbox
           &.checkbox-label,
-          input[type="checkbox"] + & {
+          input[type='checkbox'] + & {
             display: flex;
             align-items: center;
             margin-bottom: 15px;
@@ -204,9 +203,9 @@ $app-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
           }
         }
 
-        input[type="text"],
-        input[type="password"],
-        input[type="number"],
+        input[type='text'],
+        input[type='password'],
+        input[type='number'],
         textarea {
           width: 100%;
           padding: 10px;
@@ -216,7 +215,7 @@ $app-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
           box-sizing: border-box;
         }
 
-        input[type="checkbox"] {
+        input[type='checkbox'] {
           width: auto;
           margin-right: 8px;
         }

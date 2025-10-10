@@ -26,11 +26,7 @@
         rows="3"
         class="message-input"
       ></textarea>
-      <button
-        @click="sendMessage"
-        :disabled="isLoading || !message.trim()"
-        class="send-button"
-      >
+      <button @click="sendMessage" :disabled="isLoading || !message.trim()" class="send-button">
         {{ isLoading ? '发送中...' : '发送' }}
       </button>
     </div>
@@ -54,7 +50,7 @@ const currentConversationId = computed(() => conversationsStore.currentConversat
 const conversationHistory = computed(() => chatStore.conversationHistory)
 
 const filteredConversationHistory = computed(() => {
-  return conversationHistory.value.filter(msg => {
+  return conversationHistory.value.filter((msg) => {
     // 过滤掉type为function_call或function_call_output的消息
     const msgType = msg.message_metadata?.type
     return msgType !== 'function_call' && msgType !== 'function_call_output'
@@ -245,7 +241,12 @@ $app-transition: all 0.2s ease;
 // Markdown 样式
 .message-content,
 .response-content {
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin-top: 1em;
     margin-bottom: 0.5em;
     font-weight: 600;
@@ -266,7 +267,8 @@ $app-transition: all 0.2s ease;
     margin: 0.5em 0;
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin: 0.5em 0;
     padding-left: 2em;
   }
@@ -320,7 +322,8 @@ $app-transition: all 0.2s ease;
     margin: 1em 0;
     width: 100%;
 
-    th, td {
+    th,
+    td {
       border: 1px solid $app-border;
       padding: 0.5em;
       text-align: left;

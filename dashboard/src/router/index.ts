@@ -14,20 +14,20 @@ const router = createRouter({
         {
           path: '',
           name: 'chat',
-          component: ChatView
+          component: ChatView,
         },
         {
           path: '/config',
           name: 'config',
-          component: ConfigView
+          component: ConfigView,
         },
         {
           path: '/tools',
           name: 'tools',
-          component: ToolManagementView
-        }
-      ]
-    }
+          component: ToolManagementView,
+        },
+      ],
+    },
   ],
 })
 

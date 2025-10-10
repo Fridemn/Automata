@@ -6,7 +6,7 @@ export const sendChatMessage = async (message: string, sessionId: string) => {
     },
     body: JSON.stringify({
       message,
-      session_id: sessionId
+      session_id: sessionId,
     }),
   })
   return res.json()

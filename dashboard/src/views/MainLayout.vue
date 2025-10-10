@@ -34,16 +34,17 @@
         <div v-if="currentView === 'chat'" class="conversations-section">
           <div class="sidebar-subheader">
             <h3>对话列表</h3>
-            <button @click="createNewConversation" class="new-chat-btn">
-              新建对话
-            </button>
+            <button @click="createNewConversation" class="new-chat-btn">新建对话</button>
           </div>
 
           <div class="conversations-list">
             <div
               v-for="conv in conversations"
               :key="conv.conversation_id"
-              :class="['conversation-item', { active: conv.conversation_id === currentConversationId }]"
+              :class="[
+                'conversation-item',
+                { active: conv.conversation_id === currentConversationId },
+              ]"
               @click="switchConversationHandler(conv.conversation_id)"
             >
               <div class="conversation-title">{{ conv.title }}</div>
@@ -81,13 +82,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useConversationsStore } from '@/store/conversations'
-import { loadConversations, createConversation, switchConversation, deleteConversation } from '@/api/conversations'
+import {
+  loadConversations,
+  createConversation,
+  switchConversation,
+  deleteConversation,
+} from '@/api/conversations'
 import ConfigView from '@/views/ConfigView.vue'
 import ToolManagementView from '@/views/ToolManagementView.vue'
 
 const conversationsStore = useConversationsStore()
 
-const conversations = ref<Array<{conversation_id: string, title: string, created_at: string, message_count: number}>>([])
+const conversations = ref<
+  Array<{ conversation_id: string; title: string; created_at: string; message_count: number }>
+>([])
 const currentConversationId = ref('')
 const currentView = ref('chat')
 
@@ -104,7 +112,10 @@ const loadConversationsList = async () => {
 
 const createNewConversation = async () => {
   try {
-    const data = await createConversation('default_session', `新对话 ${new Date().toLocaleString()}`)
+    const data = await createConversation(
+      'default_session',
+      `新对话 ${new Date().toLocaleString()}`
+    )
     if (data.conversation_id) {
       currentConversationId.value = data.conversation_id
       await loadConversationsList()
@@ -214,7 +225,11 @@ $app-transition: all 0.2s ease;
         }
 
         .new-chat-btn {
-          background: linear-gradient(135deg, $app-primary 0%, color.adjust($app-primary, $lightness: -10%) 100%);
+          background: linear-gradient(
+            135deg,
+            $app-primary 0%,
+            color.adjust($app-primary, $lightness: -10%) 100%
+          );
           color: white;
           border: none;
           padding: 10px 18px;
@@ -235,7 +250,11 @@ $app-transition: all 0.2s ease;
           }
 
           &:hover {
-            background: linear-gradient(135deg, color.adjust($app-primary, $lightness: -10%) 0%, color.adjust($app-primary, $lightness: -20%) 100%);
+            background: linear-gradient(
+              135deg,
+              color.adjust($app-primary, $lightness: -10%) 0%,
+              color.adjust($app-primary, $lightness: -20%) 100%
+            );
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba($app-primary, 0.4);
           }

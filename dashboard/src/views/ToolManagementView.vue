@@ -5,45 +5,53 @@
     <div class="tool-container">
       <!-- 工具列表 -->
       <div class="tool-list">
-      <div v-for="tool in tools" :key="tool.name" class="tool-item">
-        <div class="tool-info">
-          <h3>{{ tool.name }}</h3>
-          <p>{{ tool.description }}</p>
-          <div class="tool-meta">
-            <span class="category">{{ tool.category }}</span>
-            <span v-if="tool.version" class="version">v{{ tool.version }}</span>
+        <div v-for="tool in tools" :key="tool.name" class="tool-item">
+          <div class="tool-info">
+            <h3>{{ tool.name }}</h3>
+            <p>{{ tool.description }}</p>
+            <div class="tool-meta">
+              <span class="category">{{ tool.category }}</span>
+              <span v-if="tool.version" class="version">v{{ tool.version }}</span>
+            </div>
+          </div>
+
+          <div class="tool-controls">
+            <button
+              v-if="!tool.enabled"
+              @click="enableTool(tool.name)"
+              :disabled="loading[tool.name]"
+              class="enable-btn"
+            >
+              {{ loading[tool.name] ? '启用中...' : '启用' }}
+            </button>
+            <button
+              v-if="tool.enabled"
+              @click="disableTool(tool.name)"
+              :disabled="loading[tool.name]"
+              class="disable-btn"
+            >
+              {{ loading[tool.name] ? '禁用中...' : '禁用' }}
+            </button>
           </div>
         </div>
-
-        <div class="tool-controls">
-          <button
-            v-if="!tool.enabled"
-            @click="enableTool(tool.name)"
-            :disabled="loading[tool.name]"
-            class="enable-btn"
-          >
-            {{ loading[tool.name] ? '启用中...' : '启用' }}
-          </button>
-          <button
-            v-if="tool.enabled"
-            @click="disableTool(tool.name)"
-            :disabled="loading[tool.name]"
-            class="disable-btn"
-          >
-            {{ loading[tool.name] ? '禁用中...' : '禁用' }}
-          </button>
-        </div>
-      </div>
       </div>
 
       <!-- 刷新按钮 -->
       <div class="actions">
-      <button @click="loadTools" :disabled="loadingAll" class="refresh-btn">
-        {{ loadingAll ? '加载中...' : '刷新' }}
-      </button>
-      <button @click="saveAndReload" :disabled="saving || pendingChanges.length === 0" class="save-btn">
-        {{ saving ? '保存中...' : `保存并重载${pendingChanges.length > 0 ? ` (${pendingChanges.length})` : ''}` }}
-      </button>
+        <button @click="loadTools" :disabled="loadingAll" class="refresh-btn">
+          {{ loadingAll ? '加载中...' : '刷新' }}
+        </button>
+        <button
+          @click="saveAndReload"
+          :disabled="saving || pendingChanges.length === 0"
+          class="save-btn"
+        >
+          {{
+            saving
+              ? '保存中...'
+              : `保存并重载${pendingChanges.length > 0 ? ` (${pendingChanges.length})` : ''}`
+          }}
+        </button>
       </div>
     </div>
   </div>
@@ -101,7 +109,7 @@ const enableTool = async (toolName: string) => {
     }
 
     // 临时更新前端显示状态（添加视觉反馈）
-    const tool = tools.value.find(t => t.name === toolName)
+    const tool = tools.value.find((t) => t.name === toolName)
     if (tool) {
       tool.enabled = true
       tool.active = true
@@ -128,7 +136,7 @@ const disableTool = async (toolName: string) => {
     }
 
     // 临时更新前端显示状态（添加视觉反馈）
-    const tool = tools.value.find(t => t.name === toolName)
+    const tool = tools.value.find((t) => t.name === toolName)
     if (tool) {
       tool.enabled = false
       tool.active = false
@@ -158,8 +166,8 @@ const saveAndReload = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        changes: pendingChanges.value
-      })
+        changes: pendingChanges.value,
+      }),
     })
 
     if (response.ok) {
@@ -213,111 +221,111 @@ $app-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     box-shadow: $app-shadow;
     margin-bottom: 30px;
 
-  .tool-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 40px;
-
-    .tool-item {
-      background: white;
-      border: 1px solid $app-border;
-      border-radius: $app-radius;
-      padding: 20px;
+    .tool-list {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: box-shadow 0.2s;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 40px;
 
-      &:hover {
-        box-shadow: $app-shadow;
-      }
+      .tool-item {
+        background: white;
+        border: 1px solid $app-border;
+        border-radius: $app-radius;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: box-shadow 0.2s;
 
-      .tool-info {
-        h3 {
-          margin: 0 0 5px 0;
-          color: $app-text;
+        &:hover {
+          box-shadow: $app-shadow;
         }
 
-        p {
-          margin: 0 0 10px 0;
-          color: $app-text-muted;
+        .tool-info {
+          h3 {
+            margin: 0 0 5px 0;
+            color: $app-text;
+          }
+
+          p {
+            margin: 0 0 10px 0;
+            color: $app-text-muted;
+          }
+
+          .tool-meta {
+            display: flex;
+            gap: 10px;
+
+            .category {
+              background: #e9ecef;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+              color: #495057;
+            }
+
+            .version {
+              background: #d1ecf1;
+              padding: 2px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+              color: #0c5460;
+            }
+          }
         }
 
-        .tool-meta {
+        .tool-controls {
           display: flex;
+          align-items: center;
           gap: 10px;
 
-          .category {
-            background: #e9ecef;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #495057;
+          .enable-btn {
+            background: $app-success;
+            color: white;
+
+            &:hover:not(:disabled) {
+              background: color.adjust($app-success, $lightness: -10%);
+            }
           }
 
-          .version {
-            background: #d1ecf1;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #0c5460;
+          .disable-btn {
+            background: $app-danger;
+            color: white;
+
+            &:hover:not(:disabled) {
+              background: color.adjust($app-danger, $lightness: -10%);
+            }
           }
         }
       }
+    }
 
-      .tool-controls {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
 
-        .enable-btn {
-          background: $app-success;
-          color: white;
+      .refresh-btn {
+        background: $app-primary;
+        color: white;
 
-          &:hover:not(:disabled) {
-            background: color.adjust($app-success, $lightness: -10%);
-          }
+        &:hover:not(:disabled) {
+          background: color.adjust($app-primary, $lightness: -10%);
         }
+      }
 
-        .disable-btn {
-          background: $app-danger;
-          color: white;
+      .save-btn {
+        background: $app-warning;
+        color: #212529;
+        font-weight: bold;
 
-          &:hover:not(:disabled) {
-            background: color.adjust($app-danger, $lightness: -10%);
-          }
+        &:hover:not(:disabled) {
+          background: color.adjust($app-warning, $lightness: -10%);
         }
       }
     }
   }
-
-  .actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 30px;
-
-    .refresh-btn {
-      background: $app-primary;
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: color.adjust($app-primary, $lightness: -10%);
-      }
-    }
-
-    .save-btn {
-      background: $app-warning;
-      color: #212529;
-      font-weight: bold;
-
-      &:hover:not(:disabled) {
-        background: color.adjust($app-warning, $lightness: -10%);
-      }
-    }
-  }
-}
 
   button {
     padding: 12px 24px;

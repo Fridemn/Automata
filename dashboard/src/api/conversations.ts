@@ -11,7 +11,7 @@ export const createConversation = async (sessionId: string, title: string) => {
     },
     body: JSON.stringify({
       session_id: sessionId,
-      title
+      title,
     }),
   })
   return res.json()
@@ -24,7 +24,7 @@ export const switchConversation = async (conversationId: string, sessionId: stri
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      session_id: sessionId
+      session_id: sessionId,
     }),
   })
   return res

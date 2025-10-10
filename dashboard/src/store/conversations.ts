@@ -10,6 +10,6 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   return {
     currentConversationId,
-    setCurrentConversationId
+    setCurrentConversationId,
   }
 })
