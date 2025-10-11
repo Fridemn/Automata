@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vector_db 扩展
+vector_db 工具
 Vector database tools for semantic search and knowledge management
 """
 

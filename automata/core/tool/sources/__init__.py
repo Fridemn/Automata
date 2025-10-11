@@ -217,7 +217,7 @@ class SourceLoader:
 source_loader = SourceLoader(os.path.dirname(__file__))
 
 
-def get_extension_loader() -> SourceLoader:
+def get_tool_loader() -> SourceLoader:
     """获取源加载器实例"""
     return source_loader
 

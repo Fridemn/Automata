@@ -15,7 +15,7 @@ from automata.core.utils.path_utils import get_data_dir
 
 from .base import ToolRegistry
 from .mcp import create_filesystem_mcp_tool
-from .sources import get_extension_loader
+from .sources import get_tool_loader
 
 if TYPE_CHECKING:
     from agents import FunctionTool
@@ -84,7 +84,7 @@ class SourceManager:
     """源管理器"""
 
     def __init__(self):
-        self.extension_loader = get_extension_loader()
+        self.tool_loader = get_tool_loader()
         self.loaded_tools: dict[str, BaseTool] = {}
 
     def load_all_sources(
@@ -92,7 +92,7 @@ class SourceManager:
         task_manager: TaskManager | None = None,
     ) -> list[BaseTool]:
         """加载所有源"""
-        sources = self.extension_loader.load_all_sources(task_manager)
+        sources = self.tool_loader.load_all_sources(task_manager)
         for tool in sources:
             self.loaded_tools[tool.name] = tool
         return sources
@@ -102,20 +102,20 @@ class SourceManager:
         if name in self.loaded_tools:
             self.loaded_tools[name].enable()
             return True
-        return self.extension_loader.enable_source(name)
+        return self.tool_loader.enable_source(name)
 
     def disable_source(self, name: str) -> bool:
         """禁用源"""
         if name in self.loaded_tools:
             self.loaded_tools[name].disable()
             return True
-        return self.extension_loader.disable_source(name)
+        return self.tool_loader.disable_source(name)
 
     def get_source_status(self, name: str) -> dict[str, Any] | None:
         """获取源状态"""
         if name in self.loaded_tools:
             tool = self.loaded_tools[name]
-            source_info = self.extension_loader.loaded_sources.get(name)
+            source_info = self.tool_loader.loaded_sources.get(name)
             return {
                 "name": tool.name,
                 "desc": source_info.desc if source_info else tool.description,
@@ -124,7 +124,7 @@ class SourceManager:
                 "version": source_info.version if source_info else "unknown",
                 "author": source_info.author if source_info else "unknown",
             }
-        return self.extension_loader.get_source_status(name)
+        return self.tool_loader.get_source_status(name)
 
     def get_loaded_tools(self) -> list[BaseTool]:
         """获取已加载的工具"""

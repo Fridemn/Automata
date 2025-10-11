@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-file_ops 扩展
+file_ops 工具
 File operations extension
 """
 

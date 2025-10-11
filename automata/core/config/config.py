@@ -7,7 +7,7 @@
 import json
 from typing import Any
 
-from automata.core.utils.path_utils import get_config_file, get_extension_config_file
+from automata.core.utils.path_utils import get_config_file, get_tool_config_file
 
 
 class UnifiedConfigManager:
@@ -15,10 +15,10 @@ class UnifiedConfigManager:
 
     def __init__(self):
         self._core_config = None
-        self._extension_config = None
+        self._tool_config = None
 
         self.core_config_file = get_config_file()
-        self.extension_config_file = get_extension_config_file()
+        self.tool_config_file = get_tool_config_file()
 
     def _load_config_file(self, config_file: str) -> dict[str, Any]:
         """加载单个配置文件"""
@@ -26,8 +26,8 @@ class UnifiedConfigManager:
             with open(config_file, encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError:
-            # 如果是扩展配置文件不存在，返回空配置
-            if config_file == self.extension_config_file:
+            # 如果是工具配置文件不存在，返回空配置
+            if config_file == self.tool_config_file:
                 return {}
             msg = f"配置文件不存在: {config_file}"
             raise FileNotFoundError(msg)
@@ -52,7 +52,7 @@ class UnifiedConfigManager:
         """
         获取配置项，支持点分隔的嵌套键
 
-        优先从核心配置获取，如果不存在则从扩展配置获取
+        优先从核心配置获取，如果不存在则从工具配置获取
         """
         keys = key.split(".")
 
@@ -64,11 +64,11 @@ class UnifiedConfigManager:
         if core_value is not None:
             return core_value
 
-        # 如果核心配置中没有找到，尝试从扩展配置获取
-        if self._extension_config is None:
-            self._extension_config = self._load_config_file(self.extension_config_file)
+        # 如果核心配置中没有找到，尝试从工具配置获取
+        if self._tool_config is None:
+            self._tool_config = self._load_config_file(self.tool_config_file)
 
-        extension_value = self._get_nested_value(self._extension_config, keys)
+        extension_value = self._get_nested_value(self._tool_config, keys)
         if extension_value is not None:
             return extension_value
 
@@ -112,10 +112,10 @@ class UnifiedConfigManager:
         vector_db_config = self.get("vector_db")
         return self._extract_nested_values(vector_db_config)
 
-    def get_extensions_config(self) -> dict[str, Any]:
-        """获取扩展相关配置"""
-        extensions_config = self.get("extensions")
-        return self._extract_nested_values(extensions_config)
+    def get_tools_config(self) -> dict[str, Any]:
+        """获取工具相关配置"""
+        tools_config = self.get("tools")
+        return self._extract_nested_values(tools_config)
 
     def get_mcp_config(self) -> dict[str, Any]:
         """获取MCP相关配置"""
@@ -125,7 +125,7 @@ class UnifiedConfigManager:
     def reload_config(self):
         """重新加载所有配置文件"""
         self._core_config = None
-        self._extension_config = None
+        self._tool_config = None
 
     def load_config(self) -> dict[str, Any]:
         """加载完整的配置用于前端显示"""
@@ -134,8 +134,8 @@ class UnifiedConfigManager:
         core_config = self.get_core_config()
         config.update(core_config)
 
-        extension_config = self.get_extension_config()
-        config.update(extension_config)
+        tool_config = self.get_tool_config()
+        config.update(tool_config)
 
         return config
 
@@ -145,11 +145,11 @@ class UnifiedConfigManager:
             self._core_config = self._load_config_file(self.core_config_file)
         return self._core_config
 
-    def get_extension_config(self) -> dict[str, Any]:
-        """获取扩展配置（用于调试）"""
-        if self._extension_config is None:
-            self._extension_config = self._load_config_file(self.extension_config_file)
-        return self._extension_config
+    def get_tool_config(self) -> dict[str, Any]:
+        """获取工具配置（用于调试）"""
+        if self._tool_config is None:
+            self._tool_config = self._load_config_file(self.tool_config_file)
+        return self._tool_config
 
     def get_core_sections(self) -> list:
         """获取核心配置的section列表"""
@@ -157,9 +157,9 @@ class UnifiedConfigManager:
         return list(core_config.keys())
 
     def get_extension_sections(self) -> list:
-        """获取扩展配置的section列表"""
-        extension_config = self.get_extension_config()
-        return list(extension_config.keys())
+        """获取工具配置的section列表"""
+        tool_config = self.get_tool_config()
+        return list(tool_config.keys())
 
 
 # 全局配置管理器实例
@@ -187,9 +187,9 @@ def get_vector_db_config() -> dict[str, Any]:
     return config_manager.get_vector_db_config()
 
 
-def get_extensions_config() -> dict[str, Any]:
-    """获取扩展配置的便捷函数"""
-    return config_manager.get_extensions_config()
+def get_tools_config() -> dict[str, Any]:
+    """获取工具配置的便捷函数"""
+    return config_manager.get_tools_config()
 
 
 def get_mcp_config() -> dict[str, Any]:

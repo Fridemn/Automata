@@ -23,9 +23,9 @@ from agents.models.multi_provider import OpenAIProvider
 
 from automata.core.config.config import (
     get_agent_config,
-    get_extensions_config,
     get_mcp_config,
     get_openai_config,
+    get_tools_config,
 )
 from automata.core.db.database import DatabaseManager
 from automata.core.dependency_container import DependencyContainer
@@ -185,16 +185,16 @@ class AutomataLauncher:
         agent_config = self.container.resolve("agent_config")
         task_manager = self.container.resolve("TaskManager")
 
-        # 获取扩展和MCP配置
-        extensions_config = get_extensions_config()
+        # 获取工具和MCP配置
+        tools_config = get_tools_config()
         mcp_config = get_mcp_config()
 
         tool_config = {
             "builtin": {
                 "enabled": agent_config.get("enable_tools", True),
             },
-            "extensions": {
-                "enabled": extensions_config.get("enabled", True),
+            "tools": {
+                "enabled": tools_config.get("enabled", True),
             },
             "mcp": {
                 "enabled": mcp_config.get("enabled", False),

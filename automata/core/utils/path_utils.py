@@ -20,9 +20,9 @@ def get_config_file() -> str:
     return os.path.join(get_data_dir(), "config.json")
 
 
-def get_extension_config_file() -> str:
+def get_tool_config_file() -> str:
     """Get the extension config file path"""
-    return os.path.join(get_data_dir(), "extension_config.json")
+    return os.path.join(get_data_dir(), "tool_config.json")
 
 
 def get_static_folder() -> str:

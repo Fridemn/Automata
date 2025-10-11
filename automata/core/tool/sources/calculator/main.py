@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-calculator 扩展
+calculator 工具
 Simple calculator tool
 """
 

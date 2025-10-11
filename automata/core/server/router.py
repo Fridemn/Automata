@@ -239,9 +239,9 @@ def setup_routes(app, dashboard):
         try:
             data = await request.get_json()
 
-            # 分离核心配置和扩展配置
+            # 分离核心配置和工具配置
             core_config = {}
-            extension_config = {}
+            tool_config = {}
 
             # 获取配置section列表
             core_sections = config_manager.get_core_sections()
@@ -254,7 +254,7 @@ def setup_routes(app, dashboard):
 
             for section in extension_sections:
                 if section in data:
-                    extension_config[section] = data[section]
+                    tool_config[section] = data[section]
 
             # 保存核心配置
             if core_config:
@@ -265,14 +265,14 @@ def setup_routes(app, dashboard):
                 ) as f:
                     json.dump(core_config, f, indent=4, ensure_ascii=False)
 
-            # 保存扩展配置
-            if extension_config:
+            # 保存工具配置
+            if tool_config:
                 with open(
-                    config_manager.extension_config_file,
+                    config_manager.tool_config_file,
                     "w",
                     encoding="utf-8",
                 ) as f:
-                    json.dump(extension_config, f, indent=4, ensure_ascii=False)
+                    json.dump(tool_config, f, indent=4, ensure_ascii=False)
 
             # 热重载配置管理器
             config_manager.reload_config()
