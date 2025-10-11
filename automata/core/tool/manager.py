@@ -6,18 +6,129 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import os
 from typing import TYPE_CHECKING, Any
 
-from .async_task_tool import create_async_task_tool
+from automata.core.utils.path_utils import get_data_dir
+
 from .base import ToolRegistry
 from .mcp import create_filesystem_mcp_tool
-from .source_manager import SourceManager
-from .state_manager import ToolStateManager
+from .sources import get_extension_loader
 
 if TYPE_CHECKING:
     from agents import FunctionTool
 
     from automata.core.tasks.task_manager import TaskManager
+
+    from .base import BaseTool
+
+
+logger = logging.getLogger(__name__)
+
+
+class ToolStateManager:
+    """工具状态管理器"""
+
+    def __init__(self, state_file: str | None = None):
+        if state_file is None:
+            state_file = os.path.join(get_data_dir(), "tool_states.json")
+        self.state_file = state_file
+        self._disabled_tools: set[str] = set()
+        self._load_states()
+
+    def _load_states(self) -> None:
+        """加载状态"""
+        try:
+            if os.path.exists(self.state_file):
+                with open(self.state_file, encoding="utf-8") as f:
+                    states = json.load(f)
+                    self._disabled_tools = set(states.get("disabled_tools", []))
+        except Exception as e:
+            logger.exception(f"加载工具状态失败: {e}")
+            self._disabled_tools = set()
+
+    def _save_states(self) -> None:
+        """保存状态"""
+        try:
+            os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
+            states = {
+                "disabled_tools": list(self._disabled_tools),
+            }
+            with open(self.state_file, "w", encoding="utf-8") as f:
+                json.dump(states, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.exception(f"保存工具状态失败: {e}")
+
+    def is_tool_disabled(self, name: str) -> bool:
+        """检查工具是否被禁用"""
+        return name in self._disabled_tools
+
+    def disable_tool(self, name: str) -> None:
+        """禁用工具"""
+        self._disabled_tools.add(name)
+        self._save_states()
+
+    def enable_tool(self, name: str) -> None:
+        """启用工具"""
+        self._disabled_tools.discard(name)
+        self._save_states()
+
+    def get_disabled_tools(self) -> set[str]:
+        """获取被禁用的工具列表"""
+        return self._disabled_tools.copy()
+
+
+class SourceManager:
+    """源管理器"""
+
+    def __init__(self):
+        self.extension_loader = get_extension_loader()
+        self.loaded_tools: dict[str, BaseTool] = {}
+
+    def load_all_sources(
+        self,
+        task_manager: TaskManager | None = None,
+    ) -> list[BaseTool]:
+        """加载所有源"""
+        sources = self.extension_loader.load_all_sources(task_manager)
+        for tool in sources:
+            self.loaded_tools[tool.name] = tool
+        return sources
+
+    def enable_source(self, name: str) -> bool:
+        """启用源"""
+        if name in self.loaded_tools:
+            self.loaded_tools[name].enable()
+            return True
+        return self.extension_loader.enable_source(name)
+
+    def disable_source(self, name: str) -> bool:
+        """禁用源"""
+        if name in self.loaded_tools:
+            self.loaded_tools[name].disable()
+            return True
+        return self.extension_loader.disable_source(name)
+
+    def get_source_status(self, name: str) -> dict[str, Any] | None:
+        """获取源状态"""
+        if name in self.loaded_tools:
+            tool = self.loaded_tools[name]
+            source_info = self.extension_loader.loaded_sources.get(name)
+            return {
+                "name": tool.name,
+                "desc": source_info.desc if source_info else tool.description,
+                "enabled": tool.enabled,
+                "active": tool.active,
+                "version": source_info.version if source_info else "unknown",
+                "author": source_info.author if source_info else "unknown",
+            }
+        return self.extension_loader.get_source_status(name)
+
+    def get_loaded_tools(self) -> list[BaseTool]:
+        """获取已加载的工具"""
+        return list(self.loaded_tools.values())
 
 
 class ToolManager:
@@ -42,15 +153,6 @@ class ToolManager:
             return
 
         self.config = config or {}
-
-        # 初始化异步任务工具
-        async_task_config = self.config.get("async_task", {})
-        if async_task_config.get("enabled", True):
-            async_task_tool = create_async_task_tool(
-                name="async_task",
-                task_manager=self.task_manager,
-            )
-            self.registry.register(async_task_tool, "async_task")
 
         # 初始化 MCP 工具
         mcp_config = self.config.get("mcp", {})
@@ -101,7 +203,8 @@ class ToolManager:
 
     def get_enabled_tools(self) -> list[Any]:
         """获取启用的工具"""
-        self._initialized = True
+        self._lazy_load_sources()
+        return self.registry.get_enabled_tools()
 
     def _lazy_load_sources(self) -> None:
         """懒加载sources工具"""
@@ -140,14 +243,7 @@ class ToolManager:
         Returns:
             bool: 是否成功启用
         """
-        # 检查是否是builtin子工具
-        if name.startswith("builtin."):
-            subtool_name = name.split(".", 1)[1]
-            if self.enable_builtin_tool(subtool_name):
-                self.state_manager.enable_builtin_tool(subtool_name)
-                return True
-            return False
-
+        self._lazy_load_sources()
         # 首先尝试在注册表中启用
         if self.registry.enable_tool(name):
             self.state_manager.enable_tool(name)
@@ -169,14 +265,7 @@ class ToolManager:
         Returns:
             bool: 是否成功禁用
         """
-        # 检查是否是builtin子工具
-        if name.startswith("builtin."):
-            subtool_name = name.split(".", 1)[1]
-            if self.disable_builtin_tool(subtool_name):
-                self.state_manager.disable_builtin_tool(subtool_name)
-                return True
-            return False
-
+        self._lazy_load_sources()
         # 首先尝试在注册表中禁用
         if self.registry.disable_tool(name):
             self.state_manager.disable_tool(name)
@@ -198,15 +287,7 @@ class ToolManager:
         Returns:
             包含工具状态信息的字典，None表示工具不存在
         """
-        # 检查是否是builtin子工具
-        if name.startswith("builtin."):
-            name.split(".", 1)[1]
-            builtin_subtools = self._get_builtin_subtools_status()
-            for subtool in builtin_subtools:
-                if subtool["name"] == name:
-                    return subtool
-            return None
-
+        self._lazy_load_sources()
         # 首先在注册表中查找
         status = self.registry.get_tool_status(name)
         if status:
@@ -223,14 +304,7 @@ class ToolManager:
 
         # 获取注册表中的工具状态
         registry_statuses = self.registry.get_all_tools_status()
-
-        for status in registry_statuses:
-            if status["name"] == "builtin":
-                # 展开builtin工具的子工具
-                builtin_subtools = self._get_builtin_subtools_status()
-                status_list.extend(builtin_subtools)
-            else:
-                status_list.append(status)
+        status_list.extend(registry_statuses)
 
         # 添加源的状态（避免重复）
         existing_names = {status["name"] for status in status_list}
@@ -242,79 +316,6 @@ class ToolManager:
 
         return status_list
 
-    def _get_builtin_subtools_status(self) -> list[dict[str, Any]]:
-        """获取builtin工具子工具的状态"""
-        builtin_tool = self.get_tool("builtin")
-        if not builtin_tool:
-            return []
-
-        subtools_status = []
-        builtin_subtools = {
-            "time": "获取当前时间",
-            "calculator": "数学计算器",
-            "file": "文件操作工具",
-            "system": "系统信息工具",
-        }
-
-        disabled_tools = self.state_manager.get_disabled_builtin_tools()
-
-        for subtool_name, description in builtin_subtools.items():
-            # 如果disabled_tools包含该工具，则禁用；否则启用
-            is_enabled = subtool_name not in disabled_tools
-            is_active = builtin_tool.active and is_enabled
-
-            subtools_status.append(
-                {
-                    "name": f"builtin.{subtool_name}",
-                    "description": description,
-                    "category": "builtin",
-                    "version": builtin_tool.config.version
-                    if hasattr(builtin_tool.config, "version")
-                    else "1.0.0",
-                    "enabled": is_enabled,
-                    "active": is_active,
-                    "parent": "builtin",
-                },
-            )
-
-        return subtools_status
-
-    def get_builtin_tools_status(self) -> list[str]:
-        """获取启用的内置子工具列表"""
-        all_builtin_subtools = ["time", "calculator", "file", "system"]
-        disabled_tools = self.state_manager.get_disabled_builtin_tools()
-        return [tool for tool in all_builtin_subtools if tool not in disabled_tools]
-
-    def enable_builtin_tool(self, tool_name: str) -> bool:
-        """启用内置工具的特定子工具
-
-        Args:
-            tool_name: 子工具名称 (如 "time", "calculator", "file", "system")
-
-        Returns:
-            bool: 是否成功启用
-        """
-        builtin_tool = self.get_tool("builtin")
-        if builtin_tool and hasattr(builtin_tool, "enable_tool"):
-            builtin_tool.enable_tool(tool_name)
-            return True
-        return False
-
-    def disable_builtin_tool(self, tool_name: str) -> bool:
-        """禁用内置工具的特定子工具
-
-        Args:
-            tool_name: 子工具名称 (如 "time", "calculator", "file", "system")
-
-        Returns:
-            bool: 是否成功禁用
-        """
-        builtin_tool = self.get_tool("builtin")
-        if builtin_tool and hasattr(builtin_tool, "disable_tool"):
-            builtin_tool.disable_tool(tool_name)
-            return True
-        return False
-
     def _apply_tool_states(self) -> None:
         # 应用普通工具的禁用状态
         for tool_name in self.state_manager.get_disabled_tools():
@@ -322,10 +323,6 @@ class ToolManager:
             if not self.registry.disable_tool(tool_name):
                 # 如果不在注册表中，尝试在源中禁用
                 self.source_manager.disable_source(tool_name)
-
-        # 应用builtin子工具的禁用状态
-        for subtool_name in self.state_manager.get_disabled_builtin_tools():
-            self.disable_builtin_tool(subtool_name)
 
     async def cleanup(self) -> None:
         """清理所有工具"""
