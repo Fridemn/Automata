@@ -33,17 +33,18 @@ class ToolManager:
         self.source_manager = SourceManager()
         self.task_manager = task_manager
         self._initialized = False
+        self.sources_loaded = False
+        self.config = None
 
     async def initialize(self, config: dict[str, Any] | None = None) -> None:
         """初始化工具管理器"""
         if self._initialized:
             return
 
-        if config is None:
-            config = {}
+        self.config = config or {}
 
         # 初始化异步任务工具
-        async_task_config = config.get("async_task", {})
+        async_task_config = self.config.get("async_task", {})
         if async_task_config.get("enabled", True):
             async_task_tool = create_async_task_tool(
                 name="async_task",
@@ -52,7 +53,7 @@ class ToolManager:
             self.registry.register(async_task_tool, "async_task")
 
         # 初始化 MCP 工具
-        mcp_config = config.get("mcp", {})
+        mcp_config = self.config.get("mcp", {})
         if mcp_config.get("enabled", False):
             # 文件系统 MCP
             if mcp_config.get("filesystem", {}).get("enabled", False):
@@ -65,16 +66,6 @@ class ToolManager:
 
         # 连接所有MCP工具的服务器
         await self._connect_mcp_servers()
-
-        # 加载所有源
-        sources_config = config.get("sources", {})
-        if sources_config.get("enabled", True):
-            source_tools = self.source_manager.load_all_sources(
-                self.task_manager,
-            )
-            for tool in source_tools:
-                category = "sources"
-                self.registry.register(tool, category)
 
         # 应用之前保存的工具状态
         self._apply_tool_states()
@@ -110,10 +101,26 @@ class ToolManager:
 
     def get_enabled_tools(self) -> list[Any]:
         """获取启用的工具"""
-        return self.registry.get_enabled_tools()
+        self._initialized = True
+
+    def _lazy_load_sources(self) -> None:
+        """懒加载sources工具"""
+        if not self.sources_loaded and self.config:
+            sources_config = self.config.get("sources", {})
+            if sources_config.get("enabled", True):
+                source_tools = self.source_manager.load_all_sources(
+                    self.task_manager,
+                )
+                for tool in source_tools:
+                    category = "sources"
+                    self.registry.register(tool, category)
+                self.sources_loaded = True
+                # 应用工具状态
+                self._apply_tool_states()
 
     def get_all_function_tools(self) -> list[FunctionTool]:
         """获取所有函数工具"""
+        self._lazy_load_sources()
         return self.registry.get_all_function_tools()
 
     def get_mcp_servers(self) -> list[Any]:
@@ -210,6 +217,8 @@ class ToolManager:
 
     def get_all_tools_status(self) -> list[dict[str, Any]]:
         """获取所有工具的状态信息"""
+        self._lazy_load_sources()
+
         status_list = []
 
         # 获取注册表中的工具状态
