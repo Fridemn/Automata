@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 from .async_task_tool import create_async_task_tool
 from .base import ToolRegistry
-from .extension_manager import ExtensionManager
 from .mcp import create_filesystem_mcp_tool
+from .source_manager import SourceManager
 from .state_manager import ToolStateManager
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class ToolManager:
     ):
         self.registry = ToolRegistry()
         self.state_manager = ToolStateManager()
-        self.extension_manager = ExtensionManager()
+        self.source_manager = SourceManager()
         self.task_manager = task_manager
         self._initialized = False
 
@@ -66,26 +66,14 @@ class ToolManager:
         # 连接所有MCP工具的服务器
         await self._connect_mcp_servers()
 
-        # 加载所有扩展
-        extensions_config = config.get("extensions", {})
-        if extensions_config.get("enabled", True):
-            extension_tools = self.extension_manager.load_all_extensions(
+        # 加载所有源
+        sources_config = config.get("sources", {})
+        if sources_config.get("enabled", True):
+            source_tools = self.source_manager.load_all_sources(
                 self.task_manager,
             )
-            for tool in extension_tools:
-                category = "extensions"
-                # 尝试从扩展信息中获取类别
-                extension_name = tool.name
-                if (
-                    extension_name
-                    in self.extension_manager.extension_loader.loaded_extensions
-                ):
-                    ext_info = (
-                        self.extension_manager.extension_loader.loaded_extensions[
-                            extension_name
-                        ]
-                    )
-                    category = ext_info.category
+            for tool in source_tools:
+                category = "sources"
                 self.registry.register(tool, category)
 
         # 应用之前保存的工具状态
@@ -158,8 +146,8 @@ class ToolManager:
             self.state_manager.enable_tool(name)
             return True
 
-        # 如果不在注册表中，尝试在扩展中启用
-        if self.extension_manager.enable_extension(name):
+        # 如果不在注册表中，尝试在源中启用
+        if self.source_manager.enable_source(name):
             self.state_manager.enable_tool(name)
             return True
 
@@ -187,8 +175,8 @@ class ToolManager:
             self.state_manager.disable_tool(name)
             return True
 
-        # 如果不在注册表中，尝试在扩展中禁用
-        if self.extension_manager.disable_extension(name):
+        # 如果不在注册表中，尝试在源中禁用
+        if self.source_manager.disable_source(name):
             self.state_manager.disable_tool(name)
             return True
 
@@ -217,8 +205,8 @@ class ToolManager:
         if status:
             return status
 
-        # 如果不在注册表中，在扩展中查找
-        return self.extension_manager.get_extension_status(name)
+        # 如果不在注册表中，在源中查找
+        return self.source_manager.get_source_status(name)
 
     def get_all_tools_status(self) -> list[dict[str, Any]]:
         """获取所有工具的状态信息"""
@@ -235,13 +223,13 @@ class ToolManager:
             else:
                 status_list.append(status)
 
-        # 添加扩展的状态（避免重复）
+        # 添加源的状态（避免重复）
         existing_names = {status["name"] for status in status_list}
-        for tool in self.extension_manager.get_loaded_tools():
+        for tool in self.source_manager.get_loaded_tools():
             if tool.name not in existing_names:
-                ext_status = self.extension_manager.get_extension_status(tool.name)
-                if ext_status:
-                    status_list.append(ext_status)
+                source_status = self.source_manager.get_source_status(tool.name)
+                if source_status:
+                    status_list.append(source_status)
 
         return status_list
 
@@ -319,13 +307,12 @@ class ToolManager:
         return False
 
     def _apply_tool_states(self) -> None:
-        """应用之前保存的工具状态"""
         # 应用普通工具的禁用状态
         for tool_name in self.state_manager.get_disabled_tools():
             # 尝试在注册表中禁用
             if not self.registry.disable_tool(tool_name):
-                # 如果不在注册表中，尝试在扩展中禁用
-                self.extension_manager.disable_extension(tool_name)
+                # 如果不在注册表中，尝试在源中禁用
+                self.source_manager.disable_source(tool_name)
 
         # 应用builtin子工具的禁用状态
         for subtool_name in self.state_manager.get_disabled_builtin_tools():

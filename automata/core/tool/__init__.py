@@ -5,9 +5,9 @@
 """
 
 from .base import BaseTool, ToolRegistry
-from .extension_manager import ExtensionManager
 from .manager import ToolManager, get_tool_manager, initialize_tools
 from .mcp import MCPTool
+from .source_manager import SourceManager
 from .state_manager import ToolStateManager
 
 __all__ = [

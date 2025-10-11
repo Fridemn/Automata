@@ -63,14 +63,14 @@ class AutomataLauncher:
         self.container.register(DatabaseManager)
 
         # 注册任务管理器（依赖数据库管理器）
-        async def create_task_manager():
+        def create_task_manager():
             db_manager = self.container.resolve(DatabaseManager)
             return TaskManager(db_manager)
 
         self.container.register_factory("TaskManager", create_task_manager)
 
         # 注册模型提供者（依赖配置）
-        async def create_model_provider():
+        def create_model_provider():
             openai_config = self.container.resolve("openai_config")
             api_key = openai_config.get("api_key")
             api_base_url = openai_config.get("api_base_url")
@@ -96,15 +96,16 @@ class AutomataLauncher:
         summary = self.init_manager.get_results_summary()
 
         if summary["failed"] > 0:
+            logger.error(f"初始化失败: {summary['failed']} 个组件失败")
             for detail in summary["details"].values():
                 if detail["status"] == "failed":
-                    pass
+                    logger.error(f"失败详情: {detail}")
 
         success = self.init_manager.is_successful()
         if success:
-            pass
+            logger.info("所有组件初始化成功")
         else:
-            pass
+            logger.error("初始化失败，程序将退出")
 
         return success
 

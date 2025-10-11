@@ -1,0 +1,4 @@
+name: vector_db
+desc: Vector database tools for semantic search and knowledge management
+author: Automata
+version: 1.0.0
