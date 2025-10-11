@@ -329,12 +329,13 @@ class ToolManager:
         # MCP工具现在通过注册表管理，所以不需要单独的MCPManager
         self.registry.cleanup_all()
         self._initialized = False
+        self.sources_loaded = False
 
     async def save_and_reload(self) -> None:
         """保存状态并重新加载工具"""
         # 重新初始化工具
         await self.cleanup()
-        await self.initialize()
+        await self.initialize(self.config)
 
     def is_initialized(self) -> bool:
         """检查是否已初始化"""
