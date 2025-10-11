@@ -182,7 +182,6 @@ class AutomataLauncher:
     async def _init_tools(self):
         """初始化工具系统"""
         # 从容器获取配置和任务管理器
-        agent_config = self.container.resolve("agent_config")
         task_manager = self.container.resolve("TaskManager")
 
         # 获取工具和MCP配置
@@ -190,9 +189,6 @@ class AutomataLauncher:
         mcp_config = get_mcp_config()
 
         tool_config = {
-            "builtin": {
-                "enabled": agent_config.get("enable_tools", True),
-            },
             "tools": {
                 "enabled": tools_config.get("enabled", True),
             },

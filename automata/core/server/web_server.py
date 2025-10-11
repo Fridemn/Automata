@@ -131,7 +131,7 @@ class AutomataDashboard:
 
         agent_config = get_agent_config()
         tool_config = {
-            "builtin": {
+            "tools": {
                 "enabled": agent_config.get("enable_tools", True),
             },
             "mcp": {

@@ -353,60 +353,6 @@ def setup_routes(app, dashboard):
             logger.exception(f"Failed to disable tool {tool_name}: {e}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/tools/builtin/<sub_tool>/enable", methods=["POST"])
-    async def enable_builtin_tool(sub_tool):
-        """启用内置子工具"""
-        try:
-            tool_mgr = get_tool_manager()
-            if tool_mgr.enable_builtin_tool(sub_tool):
-                return jsonify(
-                    {
-                        "message": f"Builtin tool {sub_tool} enabled successfully",
-                        "status": "success",
-                    },
-                )
-            return jsonify(
-                {"error": f"Failed to enable builtin tool {sub_tool}"},
-            ), 400
-        except Exception as e:
-            logger.exception(f"Failed to enable builtin tool {sub_tool}: {e}")
-            return jsonify({"error": str(e)}), 500
-
-    @app.route("/api/tools/builtin/<sub_tool>/disable", methods=["POST"])
-    async def disable_builtin_tool(sub_tool):
-        """禁用内置子工具"""
-        try:
-            tool_mgr = get_tool_manager()
-            if tool_mgr.disable_builtin_tool(sub_tool):
-                return jsonify(
-                    {
-                        "message": f"Builtin tool {sub_tool} disabled successfully",
-                        "status": "success",
-                    },
-                )
-            return jsonify(
-                {"error": f"Failed to disable builtin tool {sub_tool}"},
-            ), 400
-        except Exception as e:
-            logger.exception(f"Failed to disable builtin tool {sub_tool}: {e}")
-            return jsonify({"error": str(e)}), 500
-
-    @app.route("/api/tools/builtin", methods=["GET"])
-    async def get_builtin_tools():
-        """获取内置工具状态"""
-        try:
-            tool_mgr = get_tool_manager()
-            enabled_tools = tool_mgr.get_builtin_tools_status()
-            return jsonify(
-                {
-                    "enabled_tools": enabled_tools,
-                    "status": "success",
-                },
-            )
-        except Exception as e:
-            logger.exception(f"Failed to get builtin tools: {e}")
-            return jsonify({"error": str(e)}), 500
-
     @app.route("/api/tools/save-and-reload", methods=["POST"])
     async def save_and_reload_tools():
         """保存工具状态并重新加载"""
@@ -424,10 +370,6 @@ def setup_routes(app, dashboard):
                     tool_mgr.enable_tool(tool_name)
                 elif action == "disable":
                     tool_mgr.disable_tool(tool_name)
-                elif action == "enable_builtin":
-                    tool_mgr.enable_builtin_tool(tool_name)
-                elif action == "disable_builtin":
-                    tool_mgr.disable_builtin_tool(tool_name)
 
             # 保存并重载
             await tool_mgr.save_and_reload()
