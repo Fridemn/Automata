@@ -16,16 +16,22 @@
               💬 聊天
             </button>
             <button
-              @click="currentView = 'config'"
-              :class="['nav-btn', { active: currentView === 'config' }]"
+              @click="currentView = 'tasks'"
+              :class="['nav-btn', { active: currentView === 'tasks' }]"
             >
-              ⚙️ 配置
+              📋 任务
             </button>
             <button
               @click="currentView = 'tools'"
               :class="['nav-btn', { active: currentView === 'tools' }]"
             >
-              🔧 工具管理
+              🔧 工具
+            </button>
+            <button
+              @click="currentView = 'config'"
+              :class="['nav-btn', { active: currentView === 'config' }]"
+            >
+              ⚙️ 配置
             </button>
           </nav>
         </div>
@@ -68,11 +74,14 @@
         <div v-if="currentView === 'chat'" class="chat-container">
           <router-view />
         </div>
-        <div v-else-if="currentView === 'config'" class="config-container">
-          <ConfigView />
+        <div v-else-if="currentView === 'tasks'" class="tasks-container">
+          <TasksView />
         </div>
         <div v-else-if="currentView === 'tools'" class="tools-container">
           <ToolManagementView />
+        </div>
+        <div v-else-if="currentView === 'config'" class="config-container">
+          <ConfigView />
         </div>
       </main>
     </div>
@@ -90,6 +99,7 @@ import {
 } from '@/api/conversations'
 import ConfigView from '@/views/ConfigView.vue'
 import ToolManagementView from '@/views/ToolManagementView.vue'
+import TasksView from '@/views/TasksView.vue'
 
 const conversationsStore = useConversationsStore()
 

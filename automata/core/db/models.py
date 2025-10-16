@@ -159,3 +159,59 @@ class TaskData:
     created_at: datetime | None = None
     updated_at: datetime | None = None
     completed_at: datetime | None = None
+
+
+class TaskStep(SQLModel, table=True):
+    """任务步骤表 - 记录任务执行的详细步骤"""
+
+    __tablename__ = "task_steps"
+
+    id: int | None = Field(
+        default=None,
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True},
+    )
+    step_id: str = Field(
+        max_length=36,
+        nullable=False,
+        unique=True,
+        default_factory=lambda: str(uuid.uuid4()),
+    )
+    task_id: str = Field(nullable=False)  # 关联的任务 ID
+    step_number: int = Field(nullable=False)  # 步骤编号
+    step_type: str = Field(nullable=False)  # 步骤类型：tool_call, llm_call, decision
+    description: str | None = Field(default=None, max_length=500)
+    tool_calls: list[dict[str, Any]] | None = Field(default=None, sa_type=JSON)
+    llm_input: str | None = Field(default=None)
+    llm_output: str | None = Field(default=None)
+    intermediate_result: dict[str, Any] | None = Field(default=None, sa_type=JSON)
+    status: str = Field(nullable=False, default="running")  # running, completed, failed
+    duration_ms: float = Field(default=0.0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: datetime | None = Field(default=None)
+
+    __table_args__ = (
+        UniqueConstraint("step_id", name="uix_step_id"),
+        Index("ix_task_steps_task_id", "task_id"),
+        Index("ix_task_steps_step_number", "step_number"),
+        Index("ix_task_steps_task_step", "task_id", "step_number"),
+    )
+
+
+@dataclass
+class TaskStepData:
+    """任务步骤数据类"""
+
+    step_id: str
+    task_id: str
+    step_number: int
+    step_type: str
+    description: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    llm_input: str | None = None
+    llm_output: str | None = None
+    intermediate_result: dict[str, Any] | None = None
+    status: str = "running"
+    duration_ms: float = 0.0
+    created_at: datetime | None = None
+    completed_at: datetime | None = None

@@ -456,3 +456,89 @@ def setup_routes(app, dashboard):
         except Exception as e:
             logger.exception(f"Failed to cancel task {task_id}: {e}")
             return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/tasks/<task_id>/steps", methods=["GET"])
+    async def get_task_steps(task_id):
+        """获取任务的详细步骤"""
+        if not dashboard.task_manager:
+            return jsonify({"error": "Task manager not initialized"}), 500
+
+        try:
+            # 获取任务基本信息
+            task = await dashboard.task_manager.get_task_status(task_id)
+            if not task:
+                return jsonify({"error": "Task not found"}), 404
+
+            # 获取任务步骤（从 result 中提取）
+            steps = []
+            if task.result and isinstance(task.result, dict):
+                steps = task.result.get("steps", [])
+
+            return jsonify(
+                {
+                    "task_id": task_id,
+                    "steps": steps,
+                    "total_steps": len(steps),
+                    "status": "success",
+                },
+            )
+
+        except Exception as e:
+            logger.exception(f"Failed to get task steps for {task_id}: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/tasks/stats", methods=["GET"])
+    async def get_tasks_stats():
+        """获取任务统计信息"""
+        if not dashboard.task_manager:
+            return jsonify({"error": "Task manager not initialized"}), 500
+
+        try:
+            # 获取各状态的任务数量
+            all_tasks = await dashboard.task_manager.list_tasks(limit=1000)
+
+            stats = {
+                "total": len(all_tasks),
+                "pending": sum(1 for t in all_tasks if t.status == "pending"),
+                "running": sum(1 for t in all_tasks if t.status == "running"),
+                "completed": sum(1 for t in all_tasks if t.status == "completed"),
+                "failed": sum(1 for t in all_tasks if t.status == "failed"),
+            }
+
+            # 按任务类型统计
+            task_types = {}
+            for task in all_tasks:
+                task_types[task.task_type] = task_types.get(task.task_type, 0) + 1
+
+            return jsonify(
+                {
+                    "stats": stats,
+                    "task_types": task_types,
+                    "status": "success",
+                },
+            )
+
+        except Exception as e:
+            logger.exception(f"Failed to get task stats: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/tasks/<task_id>/delete", methods=["DELETE"])
+    async def delete_task(task_id):
+        """删除任务"""
+        if not dashboard.task_manager:
+            return jsonify({"error": "Task manager not initialized"}), 500
+
+        try:
+            success = await dashboard.task_manager.delete_task(task_id)
+            if success:
+                return jsonify(
+                    {
+                        "message": "Task deleted successfully",
+                        "status": "success",
+                    },
+                )
+            return jsonify({"error": "Task not found"}), 404
+
+        except Exception as e:
+            logger.exception(f"Failed to delete task {task_id}: {e}")
+            return jsonify({"error": str(e)}), 500

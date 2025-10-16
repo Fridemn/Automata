@@ -97,6 +97,69 @@ class TaskManager:
         task = asyncio.create_task(_run_task())
         self._running_tasks[task_id] = task
 
+    async def update_task_status(
+        self,
+        task_id: str,
+        status: str,
+        result: dict[str, Any] | None = None,
+    ) -> bool:
+        """更新任务状态"""
+        async with AsyncSession(self.db.engine) as session:
+            result_query = await session.execute(
+                select(Task).where(Task.task_id == task_id),
+            )
+            task = result_query.scalar_one_or_none()
+            if task:
+                task.status = status
+                task.updated_at = datetime.now(timezone.utc)
+                if result is not None:
+                    task.result = result
+                await session.commit()
+                return True
+        return False
+
+    async def complete_task(
+        self,
+        task_id: str,
+        result: dict[str, Any] | None = None,
+    ) -> bool:
+        """完成任务"""
+        async with AsyncSession(self.db.engine) as session:
+            result_query = await session.execute(
+                select(Task).where(Task.task_id == task_id),
+            )
+            task = result_query.scalar_one_or_none()
+            if task:
+                task.status = "completed"
+                task.result = result
+                task.completed_at = datetime.now(timezone.utc)
+                task.updated_at = datetime.now(timezone.utc)
+                await session.commit()
+                return True
+        return False
+
+    async def fail_task(
+        self,
+        task_id: str,
+        error: str,
+        result: dict[str, Any] | None = None,
+    ) -> bool:
+        """标记任务失败"""
+        async with AsyncSession(self.db.engine) as session:
+            result_query = await session.execute(
+                select(Task).where(Task.task_id == task_id),
+            )
+            task = result_query.scalar_one_or_none()
+            if task:
+                task.status = "failed"
+                task.error_message = error
+                task.result = result
+                task.completed_at = datetime.now(timezone.utc)
+                task.updated_at = datetime.now(timezone.utc)
+                await session.commit()
+                return True
+        return False
+
     async def get_task_status(self, task_id: str) -> TaskData | None:
         """获取任务状态"""
         async with AsyncSession(self.db.engine) as session:
