@@ -69,13 +69,20 @@
           </div>
           <div class="summary-item">
             <div class="summary-label">工具调用次数</div>
-            <div class="summary-value">{{ task.result.execution_summary.total_tool_calls || 0 }}</div>
+            <div class="summary-value">
+              {{ task.result.execution_summary.total_tool_calls || 0 }}
+            </div>
           </div>
           <div class="summary-item" v-if="task.result.execution_summary.total_duration_ms">
             <div class="summary-label">总耗时</div>
-            <div class="summary-value">{{ Math.round(task.result.execution_summary.total_duration_ms) }}ms</div>
+            <div class="summary-value">
+              {{ Math.round(task.result.execution_summary.total_duration_ms) }}ms
+            </div>
           </div>
-          <div class="summary-item full-width" v-if="task.result.execution_summary.tool_calls_by_tool">
+          <div
+            class="summary-item full-width"
+            v-if="task.result.execution_summary.tool_calls_by_tool"
+          >
             <div class="summary-label">工具使用统计</div>
             <div class="tool-stats">
               <span
@@ -93,9 +100,7 @@
       <!-- 执行步骤 -->
       <div class="info-card steps-card">
         <h2>执行步骤 ({{ steps.length }})</h2>
-        <div v-if="steps.length === 0" class="empty-steps">
-          暂无执行步骤
-        </div>
+        <div v-if="steps.length === 0" class="empty-steps">暂无执行步骤</div>
         <div v-else class="steps-timeline">
           <div
             v-for="(step, index) in steps"
@@ -118,19 +123,13 @@
               </div>
 
               <div class="step-meta">
-                <span v-if="step.started_at">
-                  🕐 {{ formatTime(step.started_at) }}
-                </span>
-                <span v-if="step.duration_ms">
-                  ⏱️ {{ Math.round(step.duration_ms) }}ms
-                </span>
+                <span v-if="step.started_at"> 🕐 {{ formatTime(step.started_at) }} </span>
+                <span v-if="step.duration_ms"> ⏱️ {{ Math.round(step.duration_ms) }}ms </span>
               </div>
 
               <!-- 工具调用 -->
               <div v-if="step.tool_calls && step.tool_calls.length > 0" class="tool-calls">
-                <div class="tool-calls-header">
-                  🔧 工具调用 ({{ step.tool_calls.length }})
-                </div>
+                <div class="tool-calls-header">🔧 工具调用 ({{ step.tool_calls.length }})</div>
                 <div
                   v-for="toolCall in step.tool_calls"
                   :key="toolCall.call_id"
@@ -154,9 +153,7 @@
                       <pre>{{ JSON.stringify(toolCall.result, null, 2) }}</pre>
                     </details>
 
-                    <div v-if="toolCall.error" class="tool-error">
-                      ❌ {{ toolCall.error }}
-                    </div>
+                    <div v-if="toolCall.error" class="tool-error">❌ {{ toolCall.error }}</div>
                   </div>
                 </div>
               </div>
@@ -199,18 +196,12 @@
       <!-- 错误信息 -->
       <div class="info-card error-card" v-if="task.error_message">
         <h2>错误信息</h2>
-        <div class="error-message">
-          ❌ {{ task.error_message }}
-        </div>
+        <div class="error-message">❌ {{ task.error_message }}</div>
       </div>
 
       <!-- 操作按钮 -->
       <div class="action-buttons">
-        <button
-          v-if="task.status === 'running'"
-          @click="cancelTask"
-          class="btn-action btn-cancel"
-        >
+        <button v-if="task.status === 'running'" @click="cancelTask" class="btn-action btn-cancel">
           取消任务
         </button>
         <button
@@ -314,7 +305,7 @@ const cancelTask = async () => {
 
   try {
     const response = await fetch(`/api/tasks/${taskId.value}/cancel`, {
-      method: 'POST'
+      method: 'POST',
     })
     const data = await response.json()
 
@@ -335,7 +326,7 @@ const deleteTask = async () => {
 
   try {
     const response = await fetch(`/api/tasks/${taskId.value}/delete`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     const data = await response.json()
 
@@ -365,17 +356,17 @@ const formatTime = (timeStr: string) => {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   })
 }
 
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'pending': '等待中',
-    'running': '运行中',
-    'completed': '已完成',
-    'failed': '失败'
+    pending: '等待中',
+    running: '运行中',
+    completed: '已完成',
+    failed: '失败',
   }
   return statusMap[status] || status
 }
@@ -419,7 +410,8 @@ onUnmounted(() => {
   color: #2c3e50;
 }
 
-.btn-back, .btn-refresh {
+.btn-back,
+.btn-refresh {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -468,7 +460,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {
@@ -657,8 +651,13 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .step-content {

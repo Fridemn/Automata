@@ -90,9 +90,7 @@
           </div>
 
           <div class="task-meta">
-            <span class="meta-item">
-              🕐 创建: {{ formatTime(task.created_at) }}
-            </span>
+            <span class="meta-item"> 🕐 创建: {{ formatTime(task.created_at) }} </span>
             <span class="meta-item" v-if="task.completed_at">
               ✅ 完成: {{ formatTime(task.completed_at) }}
             </span>
@@ -119,10 +117,7 @@
             >
               取消
             </button>
-            <button
-              @click="viewTaskDetail(task.task_id)"
-              class="btn-action btn-view"
-            >
+            <button @click="viewTaskDetail(task.task_id)" class="btn-action btn-view">
               查看详情
             </button>
             <button
@@ -134,9 +129,7 @@
             </button>
           </div>
 
-          <div v-if="task.error_message" class="task-error">
-            ❌ {{ task.error_message }}
-          </div>
+          <div v-if="task.error_message" class="task-error">❌ {{ task.error_message }}</div>
         </div>
       </div>
     </div>
@@ -187,16 +180,17 @@ const filteredTasks = computed(() => {
 
   // 按状态过滤
   if (filterStatus.value) {
-    filtered = filtered.filter(t => t.status === filterStatus.value)
+    filtered = filtered.filter((t) => t.status === filterStatus.value)
   }
 
   // 按搜索关键词过滤
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(t =>
-      t.description?.toLowerCase().includes(query) ||
-      t.task_type.toLowerCase().includes(query) ||
-      t.task_id.toLowerCase().includes(query)
+    filtered = filtered.filter(
+      (t) =>
+        t.description?.toLowerCase().includes(query) ||
+        t.task_type.toLowerCase().includes(query) ||
+        t.task_id.toLowerCase().includes(query)
     )
   }
 
@@ -267,7 +261,7 @@ const cancelTask = async (taskId: string) => {
 
   try {
     const response = await fetch(`/api/tasks/${taskId}/cancel`, {
-      method: 'POST'
+      method: 'POST',
     })
     const data = await response.json()
     if (data.status === 'success') {
@@ -287,7 +281,7 @@ const deleteTask = async (taskId: string) => {
 
   try {
     const response = await fetch(`/api/tasks/${taskId}/delete`, {
-      method: 'DELETE'
+      method: 'DELETE',
     })
     const data = await response.json()
     if (data.status === 'success') {
@@ -316,17 +310,17 @@ const formatTime = (timeStr: string) => {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   })
 }
 
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'pending': '等待中',
-    'running': '运行中',
-    'completed': '已完成',
-    'failed': '失败'
+    pending: '等待中',
+    running: '运行中',
+    completed: '已完成',
+    failed: '失败',
   }
   return statusMap[status] || status
 }
@@ -344,8 +338,8 @@ onUnmounted(() => {
 
 <style scoped>
 .tasks-view {
-  padding: 20px;
-  max-width: 1400px;
+  padding: 40px 20px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -353,7 +347,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
 
 .tasks-header h1 {
@@ -367,7 +362,8 @@ onUnmounted(() => {
   gap: 10px;
 }
 
-.btn-refresh, .btn-auto-refresh {
+.btn-refresh,
+.btn-auto-refresh {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -403,16 +399,22 @@ onUnmounted(() => {
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
 
 .stat-card {
-  padding: 20px;
-  border-radius: 8px;
+  padding: 28px 20px;
+  border-radius: 12px;
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   text-align: center;
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .stat-card.total {
@@ -450,15 +452,25 @@ onUnmounted(() => {
 /* 过滤器 */
 .filters {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 32px;
+  justify-content: flex-start;
 }
 
-.filter-select, .search-input {
-  padding: 8px 12px;
+.filter-select,
+.search-input {
+  padding: 10px 14px;
   border: 1px solid #dcdfe6;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
+  transition: all 0.3s;
+}
+
+.filter-select:focus,
+.search-input:focus {
+  outline: none;
+  border-color: #409eff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
 }
 
 .filter-select {
@@ -473,6 +485,7 @@ onUnmounted(() => {
 /* 任务列表 */
 .tasks-list {
   min-height: 400px;
+  width: 100%;
 }
 
 .loading {
@@ -480,7 +493,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px;
+  padding: 80px 20px;
   color: #909399;
 }
 
@@ -494,7 +507,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -506,21 +521,21 @@ onUnmounted(() => {
 
 .task-items {
   display: grid;
-  gap: 15px;
+  gap: 20px;
 }
 
 .task-item {
   background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: all 0.3s;
-  border-left: 4px solid #dcdfe6;
+  border-left: 5px solid #dcdfe6;
 }
 
 .task-item:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
 
