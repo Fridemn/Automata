@@ -192,16 +192,7 @@ class AutomataLauncher:
             "tools": {
                 "enabled": tools_config.get("enabled", True),
             },
-            "mcp": {
-                "enabled": mcp_config.get("enabled", False),
-                "filesystem": {
-                    "enabled": mcp_config.get("filesystem", {}).get("enabled", True),
-                    "root_path": mcp_config.get("filesystem", {}).get(
-                        "root_path",
-                        os.getcwd(),
-                    ),
-                },
-            },
+            "mcp": mcp_config,
         }
 
         await initialize_tools(tool_config, task_manager)

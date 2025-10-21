@@ -12,7 +12,7 @@ from .manager import (
     get_tool_manager,
     initialize_tools,
 )
-from .mcp import MCPTool
+from .mcp import MCPTool, create_unified_mcp_tool
 
 __all__ = [
     "BaseTool",
@@ -21,6 +21,7 @@ __all__ = [
     "ToolManager",
     "ToolRegistry",
     "ToolStateManager",
+    "create_unified_mcp_tool",
     "get_tool_manager",
     "initialize_tools",
 ]

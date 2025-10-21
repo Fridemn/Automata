@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from automata.core.utils.path_utils import get_data_dir
 
 from .base import ToolRegistry
-from .mcp import create_filesystem_mcp_tool
+from .mcp import create_filesystem_mcp_tool, create_unified_mcp_tool
 from .sources import get_tool_loader
 
 if TYPE_CHECKING:
@@ -157,8 +157,20 @@ class ToolManager:
         # 初始化 MCP 工具
         mcp_config = self.config.get("mcp", {})
         if mcp_config.get("enabled", False):
+            logger.info(f"Initializing MCP with config: {mcp_config}")
+            # 统一 MCP 客户端
+            server_url = mcp_config.get("server_url")
+            if server_url:
+                logger.info(f"Creating unified MCP tool with server_url: {server_url}")
+                mcp_tool = create_unified_mcp_tool(
+                    name="unified_mcp",
+                    server_url=server_url,
+                    task_manager=self.task_manager,
+                )
+                self.registry.register(mcp_tool, "mcp")
+                logger.info("MCP tool registered")
             # 文件系统 MCP
-            if mcp_config.get("filesystem", {}).get("enabled", False):
+            elif mcp_config.get("filesystem", {}).get("enabled", False):
                 fs_tool = create_filesystem_mcp_tool(
                     name="filesystem_mcp",
                     root_path=mcp_config.get("filesystem", {}).get("root_path"),
@@ -177,9 +189,17 @@ class ToolManager:
     async def _connect_mcp_servers(self) -> None:
         """连接所有MCP服务器"""
         mcp_tools = self.registry.get_tools_by_category("mcp")
+        logger.info(f"Found {len(mcp_tools)} MCP tools to connect")
         for tool in mcp_tools:
-            if hasattr(tool, "connect_all_servers"):
-                await tool.connect_all_servers()
+            logger.debug(f"Connecting MCP tool: {tool}")
+            try:
+                if hasattr(tool, "connect_all_servers"):
+                    await tool.connect_all_servers()
+                    logger.info(f"Connected MCP tool: {tool}")
+                else:
+                    logger.warning(f"MCP tool {tool} has no connect_all_servers method")
+            except Exception as e:
+                logger.exception(f"Failed to connect MCP tool {tool}: {e}")
 
     def register_tool(self, tool: Any, category: str = "general") -> None:
         """注册工具"""

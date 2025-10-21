@@ -15,7 +15,7 @@ from quart import Quart, jsonify, request
 
 from automata.core.utils.path_utils import get_static_folder
 
-from ..config.config import get_agent_config, get_openai_config
+from ..config.config import UnifiedConfigManager, get_agent_config, get_openai_config
 from ..managers.context_mgr import ContextManager
 from ..provider.sources.openai_source import create_openai_source_provider_from_config
 from ..tool import get_tool_manager, initialize_tools
@@ -129,18 +129,14 @@ class AutomataDashboard:
         """启动Web服务器"""
         # 初始化工具系统
 
-        agent_config = get_agent_config()
+        config_manager = UnifiedConfigManager()
+        agent_config = config_manager.get_agent_config()
+        mcp_config = config_manager.get_mcp_config()
         tool_config = {
             "tools": {
                 "enabled": agent_config.get("enable_tools", True),
             },
-            "mcp": {
-                "enabled": agent_config.get("enable_mcp", False),
-                "filesystem": {
-                    "enabled": True,
-                    "root_path": os.getcwd(),
-                },
-            },
+            "mcp": mcp_config,
         }
         await initialize_tools(tool_config)
 

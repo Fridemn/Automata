@@ -6,15 +6,128 @@ MCP (Model Context Protocol) 工具支持
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from typing import TYPE_CHECKING, Any
 
+import httpx
 from agents.mcp import MCPServer, MCPServerSse, MCPServerStdio, MCPServerStreamableHttp
+from mcp.types import TextContent, Tool
 
 from .base import BaseTool, ToolConfig
 
 if TYPE_CHECKING:
     from agents import FunctionTool
+
+logger = logging.getLogger(__name__)
+
+
+class MCPError(Exception):
+    """MCP 相关错误"""
+
+
+class MCPConnectionError(MCPError):
+    """MCP 连接错误"""
+
+
+class MCPToolError(MCPError):
+    """MCP 工具错误"""
+
+
+class ToolResult:
+    """工具结果"""
+
+    def __init__(self, content, structured_content=None):
+        self.content = content
+        self.structured_content = structured_content
+
+
+class HttpMCPServer:
+    """简单的 HTTP MCP 服务器客户端"""
+
+    def __init__(self, name: str, url: str):
+        self.name = name
+        self.base_url = url.rstrip("/")
+        self.mcp_url = f"{self.base_url}/mcp/"
+        self._connected = False
+        self.use_structured_content = False  # 添加缺失属性
+
+    async def connect(self):
+        """连接到 MCP 服务器"""
+
+        def _raise_connection_error(msg):
+            raise MCPConnectionError(msg)
+
+        logger.info(f"Connecting to MCP server at {self.base_url}")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # 简单健康检查
+                logger.debug(f"Checking health at {self.base_url}/health")
+                response = await client.get(f"{self.base_url}/health")
+                logger.debug(f"Health check status: {response.status_code}")
+                if response.status_code == 200:
+                    self._connected = True
+                    logger.info("Connected successfully")
+                    return
+            msg = f"Health check failed: {response.status_code}"
+            _raise_connection_error(msg)
+        except httpx.RequestError as e:
+            logger.exception(f"Request error: {e}")
+            msg = f"Connection failed: {e}"
+            raise MCPConnectionError(msg) from e
+        except Exception as e:
+            logger.exception(f"Other error: {e}")
+            msg = f"Connection failed: {e}"
+            raise MCPConnectionError(msg) from e
+
+    async def list_tools(self, run_context=None, agent=None):
+        """列出可用工具"""
+
+        # 硬编码支持的工具
+        return [
+            Tool(
+                name="fetch",
+                description="Fetches a URL from the internet and optionally extracts its contents as markdown.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to fetch"},
+                        "max_length": {"type": "integer", "default": 5000},
+                        "start_index": {"type": "integer", "default": 0},
+                        "raw": {"type": "boolean", "default": False},
+                    },
+                    "required": ["url"],
+                },
+            ),
+        ]
+
+    async def call_tool(self, name: str, arguments: dict, run_context=None, agent=None):
+        """调用工具"""
+
+        if name != "fetch":
+            msg = f"Unknown tool: {name}"
+            raise MCPToolError(msg)
+
+        # 调用 /tools/fetch 端点
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{self.base_url}/tools/fetch",
+                json=arguments,
+            )
+            if response.status_code != 200:
+                msg = f"Tool call failed: {response.status_code} - {response.text}"
+                raise MCPToolError(msg)
+
+            data = response.json()
+            content = data.get("content", [])
+            text_contents = [
+                TextContent(type=item["type"], text=item["text"]) for item in content
+            ]
+            return ToolResult(content=text_contents)
+
+    async def cleanup(self):
+        """清理连接"""
+        self._connected = False
 
 
 class MCPTool(BaseTool):
@@ -27,9 +140,25 @@ class MCPTool(BaseTool):
 
     def initialize(self) -> None:
         """初始化 MCP 服务器"""
-        server_configs = self.config.config.get("servers", {})
-        for server_name, server_config in server_configs.items():
-            self.add_server(server_name, server_config)
+        logger.info("Initializing MCP servers")
+        # 检查是否有统一服务器配置
+        server_url = self.config.config.get("server_url")
+        logger.debug(f"Server URL: {server_url}")
+        if server_url:
+            # 创建统一 MCP 服务器
+            logger.info("Adding unified MCP server")
+            self.add_server(
+                "unified_mcp",
+                {
+                    "type": "http",
+                    "config": {"url": server_url},
+                },
+            )
+        else:
+            # 旧方式：从 servers 配置
+            server_configs = self.config.config.get("servers", {})
+            for server_name, server_config in server_configs.items():
+                self.add_server(server_name, server_config)
 
     def add_server(self, name: str, config: dict[str, Any]) -> None:
         """添加 MCP 服务器"""
@@ -53,6 +182,11 @@ class MCPTool(BaseTool):
             server = MCPServerStreamableHttp(
                 name=name,
                 params=server_config,
+            )
+        elif server_type == "http":
+            server = HttpMCPServer(
+                name=name,
+                url=server_config["url"],
             )
         else:
             msg = f"Unsupported MCP server type: {server_type}"
@@ -204,6 +338,21 @@ def create_filesystem_mcp_tool(
         name=name,
         description=f"Filesystem MCP tool for {root_path}",
         config={"servers": servers},
+    )
+
+    return MCPTool(config, task_manager)
+
+
+def create_unified_mcp_tool(
+    server_url: str,
+    name: str = "unified_mcp",
+    task_manager=None,
+) -> MCPTool:
+    """创建统一 MCP 工具"""
+    config = ToolConfig(
+        name=name,
+        description=f"Unified MCP client for {server_url}",
+        config={"server_url": server_url},
     )
 
     return MCPTool(config, task_manager)
