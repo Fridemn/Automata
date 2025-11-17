@@ -45,10 +45,11 @@ class ToolResult:
 class HttpMCPServer:
     """简单的 HTTP MCP 服务器客户端"""
 
-    def __init__(self, name: str, url: str):
+    def __init__(self, name: str, url: str, api_key: str | None = None):
         self.name = name
         self.base_url = url.rstrip("/")
         self.mcp_url = f"{self.base_url}/mcp/"
+        self.api_key = api_key
         self._connected = False
         self.use_structured_content = False  # 添加缺失属性
 
@@ -82,37 +83,41 @@ class HttpMCPServer:
 
     async def list_tools(self, run_context=None, agent=None):
         """列出可用工具"""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            headers = {}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
+            response = await client.get(f"{self.base_url}/tools", headers=headers)
+            if response.status_code != 200:
+                msg = f"Failed to list tools: {response.status_code} - {response.text}"
+                raise MCPToolError(msg)
 
-        # 硬编码支持的工具
-        return [
-            Tool(
-                name="fetch",
-                description="Fetches a URL from the internet and optionally extracts its contents as markdown.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "url": {"type": "string", "description": "URL to fetch"},
-                        "max_length": {"type": "integer", "default": 5000},
-                        "start_index": {"type": "integer", "default": 0},
-                        "raw": {"type": "boolean", "default": False},
-                    },
-                    "required": ["url"],
-                },
-            ),
-        ]
+            data = response.json()
+            tools_data = data.get("tools", [])
+
+            # 转换回Tool对象
+            tools = []
+            for tool_data in tools_data:
+                tools.append(
+                    Tool(
+                        name=tool_data["name"],
+                        description=tool_data["description"],
+                        inputSchema=tool_data["inputSchema"],
+                    ),
+                )
+            return tools
 
     async def call_tool(self, name: str, arguments: dict, run_context=None, agent=None):
         """调用工具"""
-
-        if name != "fetch":
-            msg = f"Unknown tool: {name}"
-            raise MCPToolError(msg)
-
-        # 调用 /tools/fetch 端点
+        # 调用对应的工具端点
         async with httpx.AsyncClient(timeout=30.0) as client:
+            headers = {}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
             response = await client.post(
-                f"{self.base_url}/tools/fetch",
+                f"{self.base_url}/tools/{name}",
                 json=arguments,
+                headers=headers,
             )
             if response.status_code != 200:
                 msg = f"Tool call failed: {response.status_code} - {response.text}"
@@ -147,11 +152,12 @@ class MCPTool(BaseTool):
         if server_url:
             # 创建统一 MCP 服务器
             logger.info("Adding unified MCP server")
+            api_key = self.config.config.get("api_key")
             self.add_server(
                 "unified_mcp",
                 {
                     "type": "http",
-                    "config": {"url": server_url},
+                    "config": {"url": server_url, "api_key": api_key},
                 },
             )
         else:
@@ -184,9 +190,11 @@ class MCPTool(BaseTool):
                 params=server_config,
             )
         elif server_type == "http":
+            api_key = server_config.get("api_key")
             server = HttpMCPServer(
                 name=name,
                 url=server_config["url"],
+                api_key=api_key,
             )
         else:
             msg = f"Unsupported MCP server type: {server_type}"
@@ -347,12 +355,13 @@ def create_unified_mcp_tool(
     server_url: str,
     name: str = "unified_mcp",
     task_manager=None,
+    api_key: str | None = None,
 ) -> MCPTool:
     """创建统一 MCP 工具"""
     config = ToolConfig(
         name=name,
         description=f"Unified MCP client for {server_url}",
-        config={"server_url": server_url},
+        config={"server_url": server_url, "api_key": api_key},
     )
 
     return MCPTool(config, task_manager)

@@ -162,10 +162,12 @@ class ToolManager:
             server_url = mcp_config.get("server_url")
             if server_url:
                 logger.info(f"Creating unified MCP tool with server_url: {server_url}")
+                api_key = mcp_config.get("api_key")
                 mcp_tool = create_unified_mcp_tool(
                     name="unified_mcp",
                     server_url=server_url,
                     task_manager=self.task_manager,
+                    api_key=api_key,
                 )
                 self.registry.register(mcp_tool, "mcp")
                 logger.info("MCP tool registered")
