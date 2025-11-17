@@ -124,7 +124,13 @@ class HttpMCPServer:
                 raise MCPToolError(msg)
 
             data = response.json()
-            content = data.get("content", [])
+            # Handle the response format from Automata MCP server
+            if data.get("success"):
+                content = data.get("data", {}).get("content", [])
+            else:
+                error_msg = data.get("error", "Unknown error")
+                raise MCPToolError("Tool call failed: " + error_msg)
+
             text_contents = [
                 TextContent(type=item["type"], text=item["text"]) for item in content
             ]
