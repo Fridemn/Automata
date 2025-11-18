@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import os
 
 from agents import Agent
@@ -20,10 +19,6 @@ from ..managers.context_mgr import ContextManager
 from ..provider.sources.openai_source import create_openai_source_provider_from_config
 from ..tool import get_tool_manager, initialize_tools
 from .router import setup_routes
-
-# 配置日志
-logging.getLogger("quart.app").setLevel(logging.INFO)
-logging.getLogger("quart.serving").setLevel(logging.WARNING)
 
 
 class AutomataDashboard:

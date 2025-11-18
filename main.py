@@ -5,17 +5,18 @@ Automata - AI 人格系统
 """
 
 import asyncio
-import logging
 import os
 import sys
 
+from loguru import logger
+
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-    ],
+logger.remove()  # 移除默认的handler
+logger.add(
+    sys.stdout,
+    format="<green>{time}</green> - <blue>{name}</blue> - <level>{level}</level> - <cyan>{message}</cyan>",
+    level="INFO",
+    colorize=True,
 )
 
 # 添加项目根目录到 Python 路径

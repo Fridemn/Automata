@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 from typing import TYPE_CHECKING, Any
+
+from loguru import logger
 
 from automata.core.utils.path_utils import get_data_dir
 
@@ -23,9 +24,6 @@ if TYPE_CHECKING:
     from automata.core.tasks.task_manager import TaskManager
 
     from .base import BaseTool
-
-
-logger = logging.getLogger(__name__)
 
 
 class ToolStateManager:

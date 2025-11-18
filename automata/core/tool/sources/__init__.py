@@ -9,7 +9,6 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import json
-import logging
 import os
 import sys
 import traceback
@@ -17,10 +16,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+from loguru import logger
 
 from automata.core.tool.base import BaseTool, ToolConfig
-
-logger = logging.getLogger(__name__)
 
 
 class SourceInfo:

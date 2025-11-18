@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import logging
 import os
 import sys
 
-from automata.core.utils.path_utils import get_project_root
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+from automata.core.utils.path_utils import get_project_root
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, get_project_root())

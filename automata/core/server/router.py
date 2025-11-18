@@ -6,19 +6,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import os
 import time
 import traceback
 
 from agents import Runner
 from agents.extensions.memory import SQLAlchemySession
+from loguru import logger
 from quart import jsonify, request
 
 from ..config.config import config_manager
 from ..tool import get_tool_manager
-
-logger = logging.getLogger(__name__)
 
 
 def setup_routes(app, dashboard):

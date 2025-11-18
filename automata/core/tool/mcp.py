@@ -6,20 +6,18 @@ MCP (Model Context Protocol) 工具支持
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 from typing import TYPE_CHECKING, Any
 
 import httpx
 from agents.mcp import MCPServer, MCPServerSse, MCPServerStdio, MCPServerStreamableHttp
+from loguru import logger
 from mcp.types import TextContent, Tool
 
 from .base import BaseTool, ToolConfig
 
 if TYPE_CHECKING:
     from agents import FunctionTool
-
-logger = logging.getLogger(__name__)
 
 
 class MCPError(Exception):

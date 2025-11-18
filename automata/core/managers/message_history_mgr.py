@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from agents.extensions.memory import SQLAlchemySession
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 if TYPE_CHECKING:
     from ..db import DatabaseManager

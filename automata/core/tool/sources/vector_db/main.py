@@ -7,7 +7,6 @@ Vector database tools for semantic search and knowledge management
 from __future__ import annotations
 
 import json
-import logging
 import os
 from typing import Annotated, Any
 
@@ -15,13 +14,12 @@ import chromadb
 import chromadb.errors
 import openai
 from agents import function_tool
+from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 from automata.core.config.config import get_openai_config, get_vector_db_config
 from automata.core.tool.base import BaseTool, ToolConfig
 from automata.core.utils.path_utils import get_data_dir
-
-logger = logging.getLogger(__name__)
 
 
 class VectorDBTool(BaseTool):
