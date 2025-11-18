@@ -33,4 +33,5 @@ Automata - AI 人格系统
 """
 
 if __name__ == "__main__":
+    logger.info(logo_tmpl)
     asyncio.run(main())
