@@ -1,10 +1,12 @@
+import { apiFetch } from './utils'
+
 export const loadConversations = async (sessionId: string) => {
-  const res = await fetch(`/api/conversations?session_id=${sessionId}`)
+  const res = await apiFetch(`/api/conversations?session_id=${sessionId}`)
   return res.json()
 }
 
 export const createConversation = async (sessionId: string, title: string) => {
-  const res = await fetch('/api/conversations', {
+  const res = await apiFetch('/api/conversations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -18,7 +20,7 @@ export const createConversation = async (sessionId: string, title: string) => {
 }
 
 export const switchConversation = async (conversationId: string, sessionId: string) => {
-  const res = await fetch(`/api/conversations/${conversationId}/switch`, {
+  const res = await apiFetch(`/api/conversations/${conversationId}/switch`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -31,13 +33,13 @@ export const switchConversation = async (conversationId: string, sessionId: stri
 }
 
 export const deleteConversation = async (conversationId: string) => {
-  const res = await fetch(`/api/conversations/${conversationId}`, {
+  const res = await apiFetch(`/api/conversations/${conversationId}`, {
     method: 'DELETE',
   })
   return res
 }
 
 export const fetchConversationHistory = async (conversationId: string) => {
-  const res = await fetch(`/api/conversations/${conversationId}/history`)
+  const res = await apiFetch(`/api/conversations/${conversationId}/history`)
   return res.json()
 }

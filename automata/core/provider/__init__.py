@@ -11,10 +11,10 @@ __all__ = [
     "AbstractProvider",
     "LLMResponse",
     "OpenAIAgentProvider",
+    "OpenAISourceProvider",
     "Provider",
     "ProviderManager",
     "ProviderRequest",
     "ProviderType",
-    "OpenAISourceProvider",
     "create_openai_source_provider_from_config",
 ]

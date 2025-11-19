@@ -9,8 +9,11 @@ import asyncio
 import json
 import os
 
+import uvicorn
 from agents import Agent
-from quart import Quart, jsonify, request
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from automata.core.utils.path_utils import get_static_folder
 
@@ -30,12 +33,9 @@ class AutomataDashboard:
             # 默认使用dashboard/dist目录
             self.static_folder = get_static_folder()
 
-        self.app = Quart(
-            "automata-dashboard",
-            static_folder=self.static_folder,
-            static_url_path="/",
+        self.app = FastAPI(
+            title="automata-dashboard",
         )
-        self.app.config["MAX_CONTENT_LENGTH"] = 128 * 1024 * 1024  # 128MB
 
         # 初始化LLM provider
         self._init_llm_provider()
@@ -117,7 +117,7 @@ class AutomataDashboard:
 
     def _setup_routes(self):
         """设置路由"""
-
+        # 然后设置所有路由
         setup_routes(self.app, self)
 
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
@@ -135,7 +135,12 @@ class AutomataDashboard:
         }
         await initialize_tools(tool_config)
 
-        try:
-            await self.app.run_task(host=host, port=port)
-        except Exception:
-            raise
+        # 使用uvicorn运行FastAPI应用
+        config = uvicorn.Config(
+            self.app,
+            host=host,
+            port=port,
+            log_level="info",
+        )
+        server = uvicorn.Server(config)
+        await server.serve()

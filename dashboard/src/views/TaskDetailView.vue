@@ -219,6 +219,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getErrorMessage } from '@/api/utils'
 
 const route = useRoute()
 const router = useRouter()
@@ -307,12 +308,17 @@ const cancelTask = async () => {
     const response = await fetch(`/api/tasks/${taskId.value}/cancel`, {
       method: 'POST',
     })
-    const data = await response.json()
 
-    if (data.status === 'success') {
-      await refreshTask()
+    if (response.ok) {
+      const data = await response.json()
+      if (data.status === 'success') {
+        await refreshTask()
+      } else {
+        alert('取消失败: ' + getErrorMessage(data))
+      }
     } else {
-      alert('取消失败: ' + data.error)
+      const error = await response.json()
+      alert('取消失败: ' + getErrorMessage(error))
     }
   } catch (error) {
     console.error('Failed to cancel task:', error)
@@ -328,12 +334,17 @@ const deleteTask = async () => {
     const response = await fetch(`/api/tasks/${taskId.value}/delete`, {
       method: 'DELETE',
     })
-    const data = await response.json()
 
-    if (data.status === 'success') {
-      router.push('/tasks')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.status === 'success') {
+        router.push('/tasks')
+      } else {
+        alert('删除失败: ' + getErrorMessage(data))
+      }
     } else {
-      alert('删除失败: ' + data.error)
+      const error = await response.json()
+      alert('删除失败: ' + getErrorMessage(error))
     }
   } catch (error) {
     console.error('Failed to delete task:', error)

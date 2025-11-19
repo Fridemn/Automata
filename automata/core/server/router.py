@@ -12,46 +12,63 @@ import traceback
 
 from agents import Runner
 from agents.extensions.memory import SQLAlchemySession
+from fastapi import HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, JSONResponse
 from loguru import logger
-from quart import jsonify, request
 
 from ..config.config import config_manager
 from ..tool import get_tool_manager
 
 
+def _raise_empty_message_error():
+    raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+
+def _raise_conversation_not_found():
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+
+def _raise_tool_not_found():
+    raise HTTPException(status_code=404, detail="Tool not found")
+
+
+def _raise_task_not_found():
+    raise HTTPException(status_code=404, detail="Task not found")
+
+
+def _raise_task_cancel_failed():
+    raise HTTPException(status_code=404, detail="Task not found or cannot be cancelled")
+
+
+def _raise_tool_enable_failed(tool_name: str):
+    raise HTTPException(status_code=400, detail=f"Failed to enable tool {tool_name}")
+
+
+def _raise_tool_disable_failed(tool_name: str):
+    raise HTTPException(status_code=400, detail=f"Failed to disable tool {tool_name}")
+
+
 def setup_routes(app, dashboard):
     """设置所有路由"""
 
-    @app.route("/")
-    async def index():
-        """服务index.html"""
-        index_path = os.path.join(dashboard.static_folder, "index.html")
-        if os.path.exists(index_path):
-            return await app.send_static_file("index.html")
-        return "Dashboard not found. Please build the frontend first."
-
-    @app.route("/<path:path>")
-    async def static_files(path):
-        """服务其他静态文件"""
-        return await app.send_static_file(path)
-
-    @app.route("/api/chat", methods=["POST"])
-    async def chat():
+    @app.post("/api/chat")
+    async def chat(request: Request):
         """处理聊天请求"""
         if (
             not dashboard.provider
             or not dashboard.run_config
             or not dashboard.context_mgr
         ):
-            return jsonify({"error": "LLM provider not initialized"}), 500
+            raise HTTPException(status_code=500, detail="LLM provider not initialized")
 
         try:
-            data = await request.get_json()
+            data = await request.json()
             user_query = data.get("message", "").strip()
             session_id = data.get("session_id", "default_session")
 
             if not user_query:
-                return jsonify({"error": "Message cannot be empty"}), 400
+                _raise_empty_message_error()
 
             # 初始化会话上下文
             conversation_id = await dashboard.context_mgr.initialize_session(
@@ -90,8 +107,8 @@ def setup_routes(app, dashboard):
             )
             time.time()
 
-            return jsonify(
-                {
+            return JSONResponse(
+                content={
                     "response": str(result.final_output),
                     "conversation_id": conversation_id,
                     "session_id": session_id,
@@ -101,39 +118,52 @@ def setup_routes(app, dashboard):
 
         except Exception as e:
             logger.exception(f"Chat request failed: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/conversations", methods=["GET"])
-    async def get_conversations():
+    @app.get("/api/ping")
+    async def ping():
+        """测试API连通性"""
+        return JSONResponse(content={"status": "pong"})
+
+    @app.get("/api/conversations")
+    async def get_conversations(session_id: str = "default_session"):
         """获取会话的对话列表"""
+        logger.info(f"get_conversations called with session_id: {session_id}")
         if not dashboard.context_mgr:
-            return jsonify({"error": "Context manager not initialized"}), 500
+            raise HTTPException(
+                status_code=500,
+                detail="Context manager not initialized",
+            )
 
         try:
-            session_id = request.args.get("session_id", "default_session")
             conversations = await dashboard.context_mgr.get_conversation_list(
                 session_id,
             )
 
-            return jsonify(
-                {
-                    "conversations": conversations,
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "conversations": conversations,
+                        "status": "success",
+                    },
+                ),
             )
 
         except Exception as e:
             logger.exception(f"Failed to get conversations: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/conversations", methods=["POST"])
-    async def create_conversation():
+    @app.post("/api/conversations")
+    async def create_conversation(request: Request):
         """创建新对话"""
         if not dashboard.context_mgr:
-            return jsonify({"error": "Context manager not initialized"}), 500
+            raise HTTPException(
+                status_code=500,
+                detail="Context manager not initialized",
+            )
 
         try:
-            data = await request.get_json()
+            data = await request.json()
             session_id = data.get("session_id", "default_session")
             title = data.get("title")
 
@@ -144,8 +174,8 @@ def setup_routes(app, dashboard):
                 title=title,
             )
 
-            return jsonify(
-                {
+            return JSONResponse(
+                content={
                     "conversation_id": conversation_id,
                     "status": "success",
                 },
@@ -153,33 +183,41 @@ def setup_routes(app, dashboard):
 
         except Exception as e:
             logger.exception(f"Failed to create conversation: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/conversations/<conversation_id>", methods=["DELETE"])
-    async def delete_conversation(conversation_id):
+    @app.delete("/api/conversations/{conversation_id}")
+    async def delete_conversation(conversation_id: str):
         """删除对话"""
         if not dashboard.context_mgr:
-            return jsonify({"error": "Context manager not initialized"}), 500
+            raise HTTPException(
+                status_code=500,
+                detail="Context manager not initialized",
+            )
 
         try:
             success = await dashboard.context_mgr.delete_conversation(conversation_id)
 
             if success:
-                return jsonify({"status": "success"})
-            return jsonify({"error": "Conversation not found"}), 404
+                return JSONResponse(content={"status": "success"})
+            _raise_conversation_not_found()
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to delete conversation {conversation_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/conversations/<conversation_id>/switch", methods=["POST"])
-    async def switch_conversation(conversation_id):
+    @app.post("/api/conversations/{conversation_id}/switch")
+    async def switch_conversation(conversation_id: str, request: Request):
         """切换到指定对话"""
         if not dashboard.context_mgr:
-            return jsonify({"error": "Context manager not initialized"}), 500
+            raise HTTPException(
+                status_code=500,
+                detail="Context manager not initialized",
+            )
 
         try:
-            data = await request.get_json()
+            data = await request.json()
             session_id = data.get("session_id", "default_session")
 
             success = await dashboard.context_mgr.switch_conversation(
@@ -188,18 +226,23 @@ def setup_routes(app, dashboard):
             )
 
             if success:
-                return jsonify({"status": "success"})
-            return jsonify({"error": "Conversation not found"}), 404
+                return JSONResponse(content={"status": "success"})
+            _raise_conversation_not_found()
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to switch to conversation {conversation_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/conversations/<conversation_id>/history", methods=["GET"])
-    async def get_conversation_history(conversation_id):
+    @app.get("/api/conversations/{conversation_id}/history")
+    async def get_conversation_history(conversation_id: str):
         """获取对话历史消息"""
         if not dashboard.context_mgr:
-            return jsonify({"error": "Context manager not initialized"}), 500
+            raise HTTPException(
+                status_code=500,
+                detail="Context manager not initialized",
+            )
 
         try:
             # 获取对话历史
@@ -207,35 +250,37 @@ def setup_routes(app, dashboard):
                 conversation_id,
             )
 
-            return jsonify(
-                {
-                    "conversation_id": conversation_id,
-                    "messages": history,
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "conversation_id": conversation_id,
+                        "messages": history,
+                        "status": "success",
+                    },
+                ),
             )
 
         except Exception as e:
             logger.exception(
                 f"Failed to get conversation history for {conversation_id}: {e}",
             )
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/config", methods=["GET"])
+    @app.get("/api/config")
     async def get_config():
         """获取配置"""
         try:
             config = config_manager.load_config()
-            return jsonify(config)
+            return JSONResponse(content=jsonable_encoder(config))
         except Exception as e:
             logger.exception(f"Failed to get config: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/config", methods=["PUT"])
-    async def update_config():
+    @app.put("/api/config")
+    async def update_config(request: Request):
         """更新配置并热重载"""
         try:
-            data = await request.get_json()
+            data = await request.json()
 
             # 分离核心配置和工具配置
             core_config = {}
@@ -276,89 +321,99 @@ def setup_routes(app, dashboard):
             config_manager.reload_config()
             # 重新初始化LLM provider和agent配置
             dashboard._init_llm_provider()
-            return jsonify(
-                {"message": "Configuration updated and reloaded successfully"},
+            return JSONResponse(
+                content={"message": "Configuration updated and reloaded successfully"},
             )
         except Exception as e:
             logger.exception(f"Failed to update config: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tools", methods=["GET"])
+    @app.get("/api/tools")
     async def get_tools():
         """获取所有工具状态"""
         try:
             tool_mgr = get_tool_manager()
             tools_status = tool_mgr.get_all_tools_status()
-            return jsonify(
-                {
-                    "tools": tools_status,
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "tools": tools_status,
+                        "status": "success",
+                    },
+                ),
             )
         except Exception as e:
             logger.exception(f"Failed to get tools: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tools/<tool_name>", methods=["GET"])
-    async def get_tool_status(tool_name):
+    @app.get("/api/tools/{tool_name}")
+    async def get_tool_status(tool_name: str):
         """获取指定工具状态"""
         try:
             tool_mgr = get_tool_manager()
             status = tool_mgr.get_tool_status(tool_name)
             if status:
-                return jsonify(
-                    {
-                        "tool": status,
-                        "status": "success",
-                    },
+                return JSONResponse(
+                    content=jsonable_encoder(
+                        {
+                            "tool": status,
+                            "status": "success",
+                        },
+                    ),
                 )
-            return jsonify({"error": "Tool not found"}), 404
+            _raise_tool_not_found()
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to get tool status for {tool_name}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tools/<tool_name>/enable", methods=["POST"])
-    async def enable_tool(tool_name):
+    @app.post("/api/tools/{tool_name}/enable")
+    async def enable_tool(tool_name: str):
         """启用工具"""
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.enable_tool(tool_name):
-                return jsonify(
-                    {
+                return JSONResponse(
+                    content={
                         "message": f"Tool {tool_name} enabled successfully",
                         "status": "success",
                     },
                 )
-            return jsonify({"error": f"Failed to enable tool {tool_name}"}), 400
+            _raise_tool_enable_failed(tool_name)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to enable tool {tool_name}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tools/<tool_name>/disable", methods=["POST"])
-    async def disable_tool(tool_name):
+    @app.post("/api/tools/{tool_name}/disable")
+    async def disable_tool(tool_name: str):
         """禁用工具"""
         try:
             tool_mgr = get_tool_manager()
             if tool_mgr.disable_tool(tool_name):
-                return jsonify(
-                    {
+                return JSONResponse(
+                    content={
                         "message": f"Tool {tool_name} disabled successfully",
                         "status": "success",
                     },
                 )
-            return jsonify({"error": f"Failed to disable tool {tool_name}"}), 400
+            _raise_tool_disable_failed(tool_name)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to disable tool {tool_name}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tools/save-and-reload", methods=["POST"])
-    async def save_and_reload_tools():
+    @app.post("/api/tools/save-and-reload")
+    async def save_and_reload_tools(request: Request):
         """保存工具状态并重新加载"""
         try:
             tool_mgr = get_tool_manager()
 
             # 获取请求中的待处理更改
-            data = await request.get_json()
+            data = await request.json()
             changes = data.get("changes", []) if data else []
 
             # 应用所有待处理的更改
@@ -375,121 +430,133 @@ def setup_routes(app, dashboard):
             # 重置全局Agent，以便下次使用新的工具列表
             dashboard.global_agent = None
 
-            return jsonify(
-                {
+            return JSONResponse(
+                content={
                     "message": "Tools saved and reloaded successfully",
                     "status": "success",
                 },
             )
         except Exception as e:
             logger.exception(f"Failed to save and reload tools: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks", methods=["GET"])
-    async def get_tasks():
+    @app.get("/api/tasks")
+    async def get_tasks(
+        session_id: str | None = None,
+        status: str | None = None,
+        limit: int = 50,
+    ):
         """获取任务列表"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
-            session_id = request.args.get("session_id")
-            status = request.args.get("status")
-            limit = int(request.args.get("limit", 50))
-
             tasks = await dashboard.task_manager.list_tasks(
                 session_id=session_id,
                 status=status,
                 limit=limit,
             )
 
-            return jsonify(
-                {
-                    "tasks": [task.__dict__ for task in tasks],
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "tasks": [task.__dict__ for task in tasks],
+                        "status": "success",
+                    },
+                ),
             )
 
         except Exception as e:
             logger.exception(f"Failed to get tasks: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks/<task_id>", methods=["GET"])
-    async def get_task_status(task_id):
+    @app.get("/api/tasks/{task_id}")
+    async def get_task_status(task_id: str):
         """获取任务状态"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
             task = await dashboard.task_manager.get_task_status(task_id)
             if task:
-                return jsonify(
-                    {
-                        "task": task.__dict__,
-                        "status": "success",
-                    },
+                return JSONResponse(
+                    content=jsonable_encoder(
+                        {
+                            "task": task.__dict__,
+                            "status": "success",
+                        },
+                    ),
                 )
-            return jsonify({"error": "Task not found"}), 404
+            _raise_task_not_found()
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to get task status for {task_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks/<task_id>/cancel", methods=["POST"])
-    async def cancel_task(task_id):
+    @app.post("/api/tasks/{task_id}/cancel")
+    async def cancel_task(task_id: str):
         """取消任务"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
             success = await dashboard.task_manager.cancel_task(task_id)
             if success:
-                return jsonify(
-                    {
+                return JSONResponse(
+                    content={
                         "message": "Task cancelled successfully",
                         "status": "success",
                     },
                 )
-            return jsonify({"error": "Task not found or cannot be cancelled"}), 404
+            _raise_task_cancel_failed()
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to cancel task {task_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks/<task_id>/steps", methods=["GET"])
-    async def get_task_steps(task_id):
+    @app.get("/api/tasks/{task_id}/steps")
+    async def get_task_steps(task_id: str):
         """获取任务的详细步骤"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
             # 获取任务基本信息
             task = await dashboard.task_manager.get_task_status(task_id)
             if not task:
-                return jsonify({"error": "Task not found"}), 404
+                _raise_task_not_found()
 
             # 获取任务步骤（从 result 中提取）
             steps = []
             if task.result and isinstance(task.result, dict):
                 steps = task.result.get("steps", [])
 
-            return jsonify(
-                {
-                    "task_id": task_id,
-                    "steps": steps,
-                    "total_steps": len(steps),
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "task_id": task_id,
+                        "steps": steps,
+                        "total_steps": len(steps),
+                        "status": "success",
+                    },
+                ),
             )
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to get task steps for {task_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks/stats", methods=["GET"])
+    @app.get("/api/tasks/stats")
     async def get_tasks_stats():
         """获取任务统计信息"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
             # 获取各状态的任务数量
@@ -508,35 +575,39 @@ def setup_routes(app, dashboard):
             for task in all_tasks:
                 task_types[task.task_type] = task_types.get(task.task_type, 0) + 1
 
-            return jsonify(
-                {
-                    "stats": stats,
-                    "task_types": task_types,
-                    "status": "success",
-                },
+            return JSONResponse(
+                content=jsonable_encoder(
+                    {
+                        "stats": stats,
+                        "task_types": task_types,
+                        "status": "success",
+                    },
+                ),
             )
 
         except Exception as e:
             logger.exception(f"Failed to get task stats: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
 
-    @app.route("/api/tasks/<task_id>/delete", methods=["DELETE"])
-    async def delete_task(task_id):
+    @app.delete("/api/tasks/{task_id}/delete")
+    async def delete_task(task_id: str):
         """删除任务"""
         if not dashboard.task_manager:
-            return jsonify({"error": "Task manager not initialized"}), 500
+            raise HTTPException(status_code=500, detail="Task manager not initialized")
 
         try:
             success = await dashboard.task_manager.delete_task(task_id)
             if success:
-                return jsonify(
-                    {
+                return JSONResponse(
+                    content={
                         "message": "Task deleted successfully",
                         "status": "success",
                     },
                 )
-            return jsonify({"error": "Task not found"}), 404
+            _raise_task_not_found()
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.exception(f"Failed to delete task {task_id}: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise HTTPException(status_code=500, detail=str(e))
