@@ -137,9 +137,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getErrorMessage } from '@/api/utils'
 
 const router = useRouter()
 
@@ -264,16 +263,11 @@ const cancelTask = async (taskId: string) => {
     const response = await fetch(`/api/tasks/${taskId}/cancel`, {
       method: 'POST',
     })
-    if (response.ok) {
-      const data = await response.json()
-      if (data.status === 'success') {
-        await refreshTasks()
-      } else {
-        alert('取消失败: ' + getErrorMessage(data))
-      }
+    const data = await response.json()
+    if (data.status === 'success') {
+      await refreshTasks()
     } else {
-      const error = await response.json()
-      alert('取消失败: ' + getErrorMessage(error))
+      alert('取消失败: ' + data.error)
     }
   } catch (error) {
     console.error('Failed to cancel task:', error)
@@ -289,16 +283,11 @@ const deleteTask = async (taskId: string) => {
     const response = await fetch(`/api/tasks/${taskId}/delete`, {
       method: 'DELETE',
     })
-    if (response.ok) {
-      const data = await response.json()
-      if (data.status === 'success') {
-        await refreshTasks()
-      } else {
-        alert('删除失败: ' + getErrorMessage(data))
-      }
+    const data = await response.json()
+    if (data.status === 'success') {
+      await refreshTasks()
     } else {
-      const error = await response.json()
-      alert('删除失败: ' + getErrorMessage(error))
+      alert('删除失败: ' + data.error)
     }
   } catch (error) {
     console.error('Failed to delete task:', error)

@@ -59,7 +59,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getErrorMessage } from '@/api/utils'
 
 interface ToolStatus {
   name: string
@@ -177,7 +176,7 @@ const saveAndReload = async () => {
       await loadTools() // 重新加载状态
     } else {
       const error = await response.json()
-      alert(`保存失败: ${getErrorMessage(error)}`)
+      alert(`保存失败: ${error.error}`)
     }
   } catch (error) {
     console.error('Failed to save and reload:', error)

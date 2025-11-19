@@ -40,7 +40,6 @@ import { useConversationsStore } from '@/store/conversations'
 import { renderMarkdown } from '@/utils/markdown'
 import { sendChatMessage } from '@/api/chat'
 import { createConversation } from '@/api/conversations'
-import { getErrorMessage } from '@/api/utils'
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
@@ -86,17 +85,17 @@ const sendMessage = async () => {
 
     if (data.response) {
       response.value = data.response
-      // 确保 conversation_id 一致
+      // 确保conversation_id一致
       if (data.conversation_id && data.conversation_id !== conversationId) {
         conversationsStore.setCurrentConversationId(data.conversation_id)
         conversationId = data.conversation_id
       }
       await chatStore.loadConversationHistory(conversationId)
     } else {
-      response.value = `Error: ${getErrorMessage(data)}`
+      response.value = `Error: ${data.error || 'Unknown error'}`
     }
-  } catch (error: any) {
-    response.value = `Error: ${error.message || error}`
+  } catch (error) {
+    response.value = `Error: ${error}`
   } finally {
     isLoading.value = false
     message.value = '' // 清空输入框

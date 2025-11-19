@@ -53,7 +53,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getErrorMessage } from '@/api/utils'
 
 interface FieldConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,7 +116,7 @@ const saveConfig = async () => {
       originalConfig.value = JSON.parse(JSON.stringify(config.value))
     } else {
       const error = await response.json()
-      alert(`保存失败: ${getErrorMessage(error)}`)
+      alert(`保存失败: ${error.error}`)
     }
   } catch (error) {
     console.error('Error saving config:', error)

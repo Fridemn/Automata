@@ -1,11 +1,9 @@
-import { apiFetch } from './utils'
-
 export const sendChatMessage = async (
   message: string,
   sessionId: string,
   conversationId?: string
 ) => {
-  const res = await apiFetch('/api/chat', {
+  const res = await fetch('/api/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
