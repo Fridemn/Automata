@@ -105,7 +105,7 @@ const currentView = ref('chat')
 
 const loadConversationsList = async () => {
   try {
-    const data = await loadConversations('default_session')
+    const data = await loadConversations('')
     if (data.conversations) {
       conversations.value = data.conversations
     }

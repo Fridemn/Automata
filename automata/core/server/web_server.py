@@ -120,6 +120,30 @@ class AutomataDashboard:
         # 然后设置所有路由
         setup_routes(self.app, self)
 
+        # 挂载静态文件
+        if os.path.exists(self.static_folder):
+            # 挂载 assets 目录
+            assets_dir = os.path.join(self.static_folder, "assets")
+            if os.path.exists(assets_dir):
+                self.app.mount(
+                    "/assets",
+                    StaticFiles(directory=assets_dir),
+                    name="assets",
+                )
+
+            # 根路由返回 index.html
+            @self.app.get("/")
+            async def read_root():
+                return FileResponse(os.path.join(self.static_folder, "index.html"))
+
+            # 处理 favicon.ico
+            favicon_path = os.path.join(self.static_folder, "favicon.ico")
+            if os.path.exists(favicon_path):
+
+                @self.app.get("/favicon.ico")
+                async def favicon():
+                    return FileResponse(favicon_path)
+
     async def run(self, host: str = "0.0.0.0", port: int = 8080):
         """启动Web服务器"""
         # 初始化工具系统
