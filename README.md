@@ -29,7 +29,7 @@ Start the main application:
 python main.py
 ```
 
-The dashboard will be available at http://localhost:8080.
+The dashboard will be available at http://localhost:8027.
 
 ## Development
 

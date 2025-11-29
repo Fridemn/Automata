@@ -144,7 +144,7 @@ class AutomataDashboard:
                 async def favicon():
                     return FileResponse(favicon_path)
 
-    async def run(self, host: str = "0.0.0.0", port: int = 8080):
+    async def run(self, host: str = "0.0.0.0", port: int = 8027):
         """启动Web服务器"""
         # 初始化工具系统
 
